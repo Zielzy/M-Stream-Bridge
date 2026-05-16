@@ -20,7 +20,7 @@ M-Stream Bridge is a local companion tool for capturing non-DRM browser media st
 - `migaku-player-snippet.js` - Chrome DevTools Snippet for Migaku Player.
 
 ## Setup
-### Step 1 - Extension
+### Step #1 - Extension
 
 1. Extract the release zip.
 2. Open `chrome://extensions`.
@@ -31,7 +31,7 @@ M-Stream Bridge is a local companion tool for capturing non-DRM browser media st
 7. Run `M-Stream Bridge/M-Stream Bridge.exe`.
 8. When the dashboard opens, save your own Jimaku API key if you want automatic subtitle lookup.
 
-### Step 2 - Snippets
+### Step #2 - Snippets
 
 This step is manual because Chrome extensions cannot safely install DevTools Snippets for you.
 
@@ -49,12 +49,12 @@ This step is manual because Chrome extensions cannot safely install DevTools Sni
 
 ## Normal Use
 
-1. Start the server with `server/MStreamBridge/M-Stream Bridge.exe`.
+1. Start the server with `M-Stream Bridge/M-Stream Bridge.exe`.
 2. Open a supported non-DRM video page.
 3. Let it play for about 5-10 seconds.
 4. Open the extension popup and use Open Migaku.
 5. Run the `migaku-player-snippet` snippet in Migaku Player.
-6. Press `Proxy` or `Direct` to play the stream (`Proxy` is recommended first). If it doesn't work, press `retry` then `Direct`. If neither works, the stream is likely protected by strict DRM or site protection.
+6. Press `Proxy` or `Direct` to play the stream (`Proxy` is recommended first). If it doesn't work, press `Retry` then `Direct`. If neither works, the stream is likely protected by strict DRM or site protection, try another server)
 7. Press `Jimaku` to inject subtitles.
 
 ## How to Run the `migaku-player-snippet`
