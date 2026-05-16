@@ -2,7 +2,9 @@
 
 [![Downloads](https://img.shields.io/github/downloads/Zielzy/M-Stream-Bridge/total.svg)](https://github.com/Zielzy/M-Stream-Bridge/releases)
 
-M-Stream Bridge is a local companion tool for capturing non-DRM browser media streams, forwarding them to Migaku Player, and pairing playback with Jimaku subtitles.
+M-Stream Bridge is a local companion tool that expands Migaku Player support to many more non-DRM streaming websites.
+
+Also includes Jimaku API integration for quick subtitle fetching.
 
 ## Features
 
