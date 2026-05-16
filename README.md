@@ -16,8 +16,8 @@ M-Stream Bridge is a local companion tool for capturing non-DRM browser media st
 ## Included Files
 
 - `extension/` - Chrome extension folder to be loaded unpacked.
-- `server/MStreamBridge/M-Stream Bridge.exe` - local bridge server and default launcher.
-- `migaku-player-snippet/migaku-player-snippet.js` - Chrome DevTools Snippet for Migaku Player.
+- `M-Stream Bridge/M-Stream Bridge.exe` - local bridge server and default launcher.
+- `migaku-player-snippet.js` - Chrome DevTools Snippet for Migaku Player.
 
 ## Setup
 ### Step 1 - Extension
@@ -28,7 +28,7 @@ M-Stream Bridge is a local companion tool for capturing non-DRM browser media st
 4. Click Load unpacked.
 5. Select the `extension` folder from this release.
 6. Pin the `extension`.
-7. Run `server/MStreamBridge/M-Stream Bridge.exe`.
+7. Run `M-Stream Bridge/M-Stream Bridge.exe`.
 8. When the dashboard opens, save your own Jimaku API key if you want automatic subtitle lookup.
 
 ### Step 2 - Snippets
@@ -43,7 +43,7 @@ This step is manual because Chrome extensions cannot safely install DevTools Sni
 <img width="288" height="178" alt="image" src="https://github.com/user-attachments/assets/84c677cd-0b5b-461d-a8bf-f267e238559e" />
 
 6. Create a new snippet named `migaku-player-snippet`.
-7. Open `migaku-player-snippet/migaku-player-snippet.js` in a text editor.
+7. Open `migaku-player-snippet.js` in a text editor.
 8. Copy the whole file into the new Chrome snippet.
 9. Press `Ctrl+S` inside DevTools to save the snippet.
 
@@ -54,7 +54,7 @@ This step is manual because Chrome extensions cannot safely install DevTools Sni
 3. Let it play for about 5-10 seconds.
 4. Open the extension popup and use Open Migaku.
 5. Run the `migaku-player-snippet` snippet in Migaku Player.
-6. Press `Proxy` or `Direct` to play the stream (`Proxy` is recommended first). If it doesn't work, try `Direct`. If neither works, the stream is likely protected by strict DRM or site protection.
+6. Press `Proxy` or `Direct` to play the stream (`Proxy` is recommended first). If it doesn't work, press `retry` then `Direct`. If neither works, the stream is likely protected by strict DRM or site protection.
 7. Press `Jimaku` to inject subtitles.
 
 ## How to Run the `migaku-player-snippet`
