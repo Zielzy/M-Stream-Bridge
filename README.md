@@ -54,7 +54,7 @@ This step is manual because Chrome extensions cannot safely install DevTools Sni
 3. Let it play for about 5-10 seconds.
 4. Open the extension popup and use Open Migaku.
 5. Run the `migaku-player-snippet` snippet in Migaku Player.
-6. Press `Proxy` or `Direct` to play (try `Proxy` first; if it doesn't play, use `Direct`).
+6. Press `Proxy` or `Direct` to play the stream (`Proxy` is recommended first). If it doesn't work, try `Direct`. If neither works, the stream is likely protected by strict DRM or site protection.
 7. Press `Jimaku` to inject subtitles.
 
 ## How to Run the `migaku-player-snippet`
@@ -72,7 +72,7 @@ Run this whenever Migaku Player needs the bridge UI again:
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/W4B71ZIEH5)
 
-If you enjoy what I do, please consider supporting me. Thank you!
+If you find this project useful, you can support me on Ko-fi ☕
 
 ## ✨Tips
 Use `CTRL + ALT + B` to fully hide the `migaku-player-snippet` UI.
