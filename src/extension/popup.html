@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>M-Stream Bridge</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      width: 320px;
+      margin: 0;
+      background: #101114;
+      color: #f2f4f8;
+      font: 13px/1.4 system-ui, -apple-system, Segoe UI, sans-serif;
+    }
+    .wrap { padding: 14px; }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .badge {
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #3a1f23;
+      color: #ffb4b4;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge.on {
+      background: #173322;
+      color: #8ff0b2;
+    }
+    .panel {
+      border: 1px solid #2b2f37;
+      border-radius: 8px;
+      padding: 10px;
+      background: #171a20;
+      margin-bottom: 10px;
+    }
+    .meta {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    .pill {
+      min-width: 46px;
+      text-align: center;
+      border-radius: 6px;
+      padding: 3px 7px;
+      background: #26384f;
+      color: #a9d2ff;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .title {
+      min-height: 20px;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+    .url {
+      margin-top: 4px;
+      color: #a8b0bf;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    button {
+      height: 34px;
+      border: 0;
+      border-radius: 7px;
+      background: #2a303a;
+      color: #f2f4f8;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.primary {
+      grid-column: 1 / -1;
+      background: #2d5c88;
+    }
+    button:hover { filter: brightness(1.12); }
+    #status {
+      margin-top: 10px;
+      font-size: 12px;
+    }
+    .ok { color: #8ff0b2; }
+    .bad { color: #ffb4b4; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>M-Stream Bridge <span style="color:#a8b0bf">vdev</span></h1>
+      <span id="server" class="badge">OFFLINE</span>
+    </header>
+
+    <section class="panel">
+      <div class="meta">
+        <span id="stream-type" class="pill">-</span>
+      </div>
+      <div id="stream-title" class="title">Checking server...</div>
+      <div id="stream-url" class="url">-</div>
+    </section>
+
+    <div class="actions">
+      <button id="open-migaku" class="primary">Open Migaku</button>
+      <button id="open-proxy">Proxy</button>
+      <button id="open-direct">Direct</button>
+      <button id="refresh">Refresh</button>
+    </div>
+
+    <div id="status" class="bad">checking</div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
