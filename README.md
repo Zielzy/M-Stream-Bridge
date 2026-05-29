@@ -1,15 +1,26 @@
-<img width="918" height="166" alt="m-streambridge" src="https://github.com/user-attachments/assets/000c078a-0680-4fc2-b40c-020f06882b53" />
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/000c078a-0680-4fc2-b40c-020f06882b53" width="700">
+</p>
 
-# M-Stream Bridge
+<h1 align="center">M-Stream Bridge</h1>
 
-[![Downloads](https://img.shields.io/github/downloads/Zielzy/M-Stream-Bridge/total.svg)](https://github.com/Zielzy/M-Stream-Bridge/releases)
+<p align="center">
+  <a href="https://github.com/Zielzy/M-Stream-Bridge/releases">
+    <img src="https://img.shields.io/github/downloads/Zielzy/M-Stream-Bridge/total.svg">
+  </a>
+  <a href="https://ko-fi.com/Zielzy">
+    <img src="https://img.shields.io/badge/Ko--fi-Support-ff5e5b?logo=kofi">
+  </a>
+</p>
 
-M-Stream Bridge is a local companion tool that expands Migaku Player support to many more non-DRM streaming websites via a local proxy. Includes Jimaku API integration for quick subtitle fetching.
+<p align="center">
+  A companion tool that expands Migaku Player support to many more non-DRM streaming websites via a local proxy. Includes Jimaku API integration for quick subtitle fetching.
+</p>
 
 ## Features
 
 - **Media Interception**: Automatically detects and captures HLS (`.m3u8`) and Direct (MP4) video streams from your browser.
-- **Migaku Player Integration**: Seamlessly pipes unsupported video streams into Migaku Player via a local proxy, enabling advanced language learning tools.
+- **Migaku Video Player Integration**: Seamlessly pipes unsupported video streams into Migaku Player via a local proxy, enabling advanced language learning tools.
 - **Jimaku Subtitle Injection**: Integrates with the Jimaku API to automatically fetch and inject Japanese subtitles directly into the player.
 - **Floating Console UI**: Provides an elegant, draggable control panel inside Migaku Player to easily switch between Direct/Proxy modes and manage subtitles.
 - **Playback State Recovery**: Remembers your playback position and automatically restores it if the page is reloaded.
@@ -76,5 +87,5 @@ Run this whenever Migaku Player needs the bridge UI again:
 
 If you find this project useful, you can support me on Ko-fi ☕
 
-## ✨Tips
+## Tips
 Use `CTRL + ALT + B` to fully hide the `migaku-player-snippet` UI.
