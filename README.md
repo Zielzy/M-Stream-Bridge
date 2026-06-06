@@ -39,10 +39,10 @@ M-Stream Bridge coordinates three main layers to bridge browser media into Migak
 <table>
 <tr>
 <td>
-<img src="https://github.com/user-attachments/assets/fdb9cd58-f7aa-4886-b511-10bd7bb62e78" width="400">
+<img src="https://github.com/user-attachments/assets/fdb9cd58-f7aa-4886-b511-10bd7bb62e78" width="450">
 </td>
 <td>
-<img src="https://github.com/user-attachments/assets/6bbdeb52-8356-4e00-97bc-85fb634cb2ef" width="400">
+<img src="https://github.com/user-attachments/assets/6bbdeb52-8356-4e00-97bc-85fb634cb2ef" width="450">
 </td>
 </tr>
 </table>
