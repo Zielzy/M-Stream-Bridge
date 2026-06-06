@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/000c078a-0680-4fc2-b40c-020f06882b53" width="700">
+  <img src="https://github.com/user-attachments/assets/000c078a-0680-4fc2-b40c-020f06882b53" width="450">
 </p>
 
 <h1 align="center">M-Stream Bridge</h1>
@@ -26,10 +26,33 @@
 - **Playback State Recovery**: Remembers your playback position and automatically restores it if the page is reloaded.
 - **Local Dashboard**: A bundled local server dashboard (running on port 7000) to monitor stream status, configure API keys, and manage server settings.
 
+## How It Works
+
+M-Stream Bridge coordinates three main layers to bridge browser media into Migaku:
+
+1. **Interception**: When you play a video in your browser, the **Chrome Extension** intercepts the stream requests (HLS playlists or Direct video links) along with their network authorization headers (Cookies, User-Agents, Referers) and sends them to the local server.
+2. **Local Proxying**: The local **Server** receives the stream. Since media servers usually protect streams against hotlinking and CORS, the server acts as a local proxy, forwarding the video chunks while attaching the original browser headers to bypass authorization checks.
+3. **Injected Integration**: Inside Migaku Player, the **DevTools Snippet** renders a floating control bar. It feeds Migaku a dummy video to pass initial drag-and-drop checks, then instantly swaps the video source with the local proxied stream URL, while injecting subtitle tracks fetched from the **Jimaku API**.
+
+<div align="center">
+
+<table>
+<tr>
+<td>
+<img src="https://github.com/user-attachments/assets/fdb9cd58-f7aa-4886-b511-10bd7bb62e78" width="400">
+</td>
+<td>
+<img src="https://github.com/user-attachments/assets/6bbdeb52-8356-4e00-97bc-85fb634cb2ef" width="400">
+</td>
+</tr>
+</table>
+
+</div>
+
 ## Included Files
 
 - `extension/` - Chrome extension folder to be loaded unpacked.
-- `M-Stream Bridge/M-Stream Bridge.exe` - local bridge server and default launcher.
+- `M-Stream Bridge.exe` - local bridge server and default launcher.
 - `migaku-player-snippet.js` - Chrome DevTools Snippet for Migaku Player.
 
 ## Setup
@@ -41,7 +64,7 @@
 4. Click Load unpacked.
 5. Select the `extension` folder from this release.
 6. Pin the `extension`.
-7. Run `M-Stream Bridge/M-Stream Bridge.exe`.
+7. Run `M-Stream Bridge.exe`.
 8. When the dashboard opens, save your own Jimaku API key if you want automatic subtitle lookup.
 
 ### Step #2 - Snippets
@@ -57,15 +80,15 @@ This step is manual because Chrome extensions cannot safely install DevTools Sni
 
 6. Create a new snippet named `migaku-player-snippet`.
 7. Open `migaku-player-snippet.js` in a text editor.
-8. Copy the whole file into the new Chrome snippet.
+8. Copy the whole file `Ctrl+A` into the new Chrome snippet.
 9. Press `Ctrl+S` inside DevTools to save the snippet.
 
 ## Normal Use
 
-1. Start the server with `M-Stream Bridge/M-Stream Bridge.exe`.
+1. Start the server with `M-Stream Bridge.exe`.
 2. Open a supported non-DRM video page.
 3. Let it play for about 5-10 seconds.
-4. Open the extension popup and use Open Migaku.
+4. Open the extension popup and use Open Migaku Player.
 5. Run the `migaku-player-snippet` snippet in Migaku Player.
 6. Press `Proxy` or `Direct` to play the stream (`Proxy` is recommended first). If it doesn't work, press `Retry` then `Direct`. If neither works, the stream is likely protected by strict DRM or site protection, try another server)
 7. Press `Jimaku` to inject subtitles.
