@@ -31,7 +31,7 @@
 M-Stream Bridge coordinates three main layers to bridge browser media into Migaku:
 
 1. **Interception**: When you play a video in your browser, the **Chrome Extension** intercepts the stream requests (HLS playlists or Direct video links) along with their network authorization headers (Cookies, User-Agents, Referers) and sends them to the local server.
-2. **Local Proxying**: The local **Server** receives the stream. Since media servers usually protect streams against hotlinking and CORS, the server acts as a local proxy, forwarding the video chunks while attaching the original browser headers to bypass authorization checks.
+2. **Local Proxying**: The local **Server** receives the stream. Since media servers usually protect streams against hotlinking and CORS, the server acts as a local proxy, forwarding the video chunks while preserving the original browser headers required by the media server.
 3. **Injected Integration**: Inside Migaku Player, the **DevTools Snippet** renders a floating control bar. It feeds Migaku a dummy video to pass initial drag-and-drop checks, then instantly swaps the video source with the local proxied stream URL, while injecting subtitle tracks fetched from the **Jimaku API**.
 
 <div align="center">
