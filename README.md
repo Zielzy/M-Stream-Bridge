@@ -49,6 +49,14 @@ M-Stream Bridge coordinates three main layers to bridge browser media into Migak
 
 </div>
 
+
+## Privacy
+
+- Runs 100% locally on your machine.
+- No browsing data is collected.
+- No media streams are uploaded to external servers.
+- No analytics or tracking.
+  
 ## Included Files
 
 - `extension/` - Chrome extension folder to be loaded unpacked.
@@ -93,7 +101,7 @@ This step is manual because Chrome extensions cannot safely install DevTools Sni
 6. Press `Proxy` or `Direct` to play the stream (`Proxy` is recommended first). If it doesn't work, press `Retry` then `Direct`. If neither works, the stream is likely protected by strict DRM or site protection, try another server)
 7. Press `Jimaku` to inject subtitles.
 
-## How to Run the `migaku-player-snippet`
+### How to Run the `migaku-player-snippet`
 
 Run this whenever Migaku Player needs the bridge UI again:
 
