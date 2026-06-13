@@ -14,17 +14,16 @@
 </p>
 
 <p align="center">
-  A companion tool that expands Migaku Player support to many more non-DRM streaming websites via a local proxy. Includes Jimaku API integration for quick subtitle fetching.
+  A companion tool that expands Migaku Player support to many more non-DRM streaming websites via a local proxy. Includes Jimaku and Subdl API integration for multi-language subtitle fetching.
 </p>
 
 ## Features
 
 - **Media Interception**: Automatically detects and captures HLS (`.m3u8`) and Direct (MP4) video streams from your browser.
 - **Migaku Video Player Integration**: Seamlessly pipes unsupported video streams into Migaku Player via a local proxy, enabling advanced language learning tools.
-- **Jimaku Subtitle Injection**: Integrates with the Jimaku API to automatically fetch and inject Japanese subtitles directly into the player.
-- **Floating Console UI**: Provides an elegant, draggable control panel inside Migaku Player to easily switch between Direct/Proxy modes and manage subtitles.
+- **Multi-Provider Subtitle Injection**: Integrates with Jimaku (for Japanese) and Subdl (for 10+ global languages) to automatically fetch and inject subtitles directly into the player.
 - **Playback State Recovery**: Remembers your playback position and automatically restores it if the page is reloaded.
-- **Local Dashboard**: A bundled local server dashboard (running on port 7000) to monitor stream status, configure API keys, and manage server settings.
+- **Local Dashboard**: A bundled local server dashboard (running on port 7000) to monitor stream status, manually search for subtitles, configure API keys, and manage server settings.
 
 ## How It Works
 
@@ -32,17 +31,17 @@ M-Stream Bridge coordinates three main layers to bridge browser media into Migak
 
 1. **Interception**: When you play a video in your browser, the **Chrome Extension** intercepts the stream requests (HLS playlists or Direct video links) along with their network authorization headers (Cookies, User-Agents, Referers) and sends them to the local server.
 2. **Local Proxying**: The local **Server** receives the stream. Since media servers usually protect streams against hotlinking and CORS, the server acts as a local proxy, forwarding the video chunks while preserving the original browser headers required by the media server.
-3. **Injected Integration**: Inside Migaku Player, the **DevTools Snippet** renders a floating control bar. It feeds Migaku a dummy video to pass initial drag-and-drop checks, then instantly swaps the video source with the local proxied stream URL, while injecting subtitle tracks fetched from the **Jimaku API**.
+3. **Injected Integration**: Inside Migaku Player, the **DevTools Snippet** renders a floating control bar. It feeds Migaku a dummy video to pass initial drag-and-drop checks, then instantly swaps the video source with the local proxied stream URL, while injecting subtitle tracks fetched from the **Jimaku or Subdl APIs**.
 
 <div align="center">
 
 <table>
 <tr>
 <td>
-<img src="https://github.com/user-attachments/assets/fdb9cd58-f7aa-4886-b511-10bd7bb62e78" width="450">
+<img src="https://github.com/user-attachments/assets/bc36ecbf-6260-42cb-90c3-5a7c651b2b44" width="450">
 </td>
 <td>
-<img src="https://github.com/user-attachments/assets/6bbdeb52-8356-4e00-97bc-85fb634cb2ef" width="450">
+<img src="https://github.com/user-attachments/assets/284d0608-c58d-4925-85aa-c67d21cc5550" width="450">
 </td>
 </tr>
 </table>
@@ -73,7 +72,7 @@ M-Stream Bridge coordinates three main layers to bridge browser media into Migak
 5. Select the `extension` folder from this release.
 6. Pin the `extension`.
 7. Run `M-Stream Bridge.exe`.
-8. When the dashboard opens, save your own Jimaku API key if you want automatic subtitle lookup.
+8. When the dashboard opens, save your Jimaku or Subdl API keys and configure your preferred subtitle languages for automatic subtitle lookup.
 
 ### Step #2 - Snippets
 
@@ -91,15 +90,33 @@ This step is manual because Chrome extensions cannot safely install DevTools Sni
 8. Copy the whole file `Ctrl+A` into the new Chrome snippet.
 9. Press `Ctrl+S` inside DevTools to save the snippet.
 
+### Step #3 - Get API Keys
+
+To enable automatic subtitle fetching, you need to provide API keys for the supported providers in the M-Stream Bridge dashboard:
+
+**Jimaku API Key (Best for Japanese/Anime):**
+1. Create an account at [Jimaku.cc](https://jimaku.cc/login).
+2. Navigate to your [Account](https://jimaku.cc/account).
+3. Generate a new key and copy it into the dashboard.
+
+**Subdl API Key (Best for General Media & Global Languages):**
+1. Create an account at [Subdl.com](https://subdl.com).
+2. Navigate to the [API portal](https://subdl.com/panel/api).
+3. Copy your API key into the dashboard and configure your preferred languages.
+
 ## Normal Use
 
 1. Start the server with `M-Stream Bridge.exe`.
 2. Open a supported non-DRM video page.
-3. Let it play for about 5-10 seconds.
-4. Open the extension popup and use Open Migaku Player.
+3. Let the video play for about 5–10 seconds.
+4. Open the extension popup and click **Open Migaku Player**.
 5. Run the `migaku-player-snippet` snippet in Migaku Player.
-6. Press `Proxy` or `Direct` to play the stream (`Proxy` is recommended first). If it doesn't work, press `Retry` then `Direct`. If neither works, the stream is likely protected by strict DRM or site protection, try another server)
-7. Press `Jimaku` to inject subtitles.
+6. Click **Proxy** or **Direct** to start playback (**Proxy** is recommended first).
+   - If playback fails, click **Retry**, then try **Direct**.
+   - Sometimes playback may start without audio. If that happens, simply click **Proxy** again.
+   - If neither works, the stream is likely protected by strict DRM or site-specific protections.
+7. Click **Subtitle** to automatically fetch and inject subtitles from your configured providers.
+8. If you switch to a different video source, click **Exit Video** in Migaku Player before playing again.
 
 ### How to Run the `migaku-player-snippet`
 
