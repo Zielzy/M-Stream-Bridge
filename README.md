@@ -100,7 +100,7 @@ To enable automatic subtitle fetching, you need to provide API keys for the supp
 3. Generate a new key and copy it into the dashboard.
 
 **Subdl API Key (Best for General Media & Global Languages):**
-1. Create an account at [Subdl.com](https://subdl.com).
+1. Create an account at [Subdl.com](https://subdl.com/panel/register).
 2. Navigate to the [API portal](https://subdl.com/panel/api).
 3. Copy your API key into the dashboard and configure your preferred languages.
 
