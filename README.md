@@ -22,7 +22,6 @@
 - **Media Interception**: Automatically detects and captures HLS (`.m3u8`) and Direct (MP4) video streams from your browser.
 - **Migaku Video Player Integration**: Seamlessly pipes unsupported video streams into Migaku Player via a local proxy, enabling advanced language learning tools.
 - **Multi-Provider Subtitle Injection**: Integrates with Jimaku (for Japanese) and Subdl (for 10+ global languages) to automatically fetch and inject subtitles directly into the player.
-- **Playback State Recovery**: Remembers your playback position and automatically restores it if the page is reloaded.
 - **Local Dashboard**: A bundled local server dashboard (running on port 7000) to monitor stream status, manually search for subtitles, configure API keys, and manage server settings.
 
 ## How It Works
@@ -38,16 +37,15 @@ M-Stream Bridge coordinates three main layers to bridge browser media into Migak
 <table>
 <tr>
 <td>
-<img src="https://github.com/user-attachments/assets/bc36ecbf-6260-42cb-90c3-5a7c651b2b44" width="450">
+<img src="https://github.com/user-attachments/assets/0cea7390-06fa-4900-a714-34b22fc39ab1" width="450">
 </td>
 <td>
-<img src="https://github.com/user-attachments/assets/284d0608-c58d-4925-85aa-c67d21cc5550" width="450">
+<img src="https://github.com/user-attachments/assets/93119495-8744-4019-b7cc-0a5508a5a049" width="450">
 </td>
 </tr>
 </table>
 
 </div>
-
 
 ## Privacy
 
@@ -100,7 +98,7 @@ To enable automatic subtitle fetching, you need to provide API keys for the supp
 3. Generate a new key and copy it into the dashboard.
 
 **Subdl API Key (Best for General Media & Global Languages):**
-1. Create an account at [Subdl.com](https://subdl.com/panel/register).
+1. Create an account at [Subdl.com](https://subdl.com).
 2. Navigate to the [API portal](https://subdl.com/panel/api).
 3. Copy your API key into the dashboard and configure your preferred languages.
 
@@ -111,10 +109,10 @@ To enable automatic subtitle fetching, you need to provide API keys for the supp
 3. Let the video play for about 5–10 seconds.
 4. Open the extension popup and click **Open Migaku Player**.
 5. Run the `migaku-player-snippet` snippet in Migaku Player.
-6. Click **Proxy** or **Direct** to start playback (**Proxy** is recommended first).
-   - If playback fails, click **Retry**, then try **Direct**.
-   - Sometimes playback may start without audio. If that happens, simply click **Proxy** again.
-   - If neither works, the stream is likely protected by strict DRM or site-specific protections.
+6. Choose a playback mode:
+   - **Standard Mode**: For everyday watching. Select **Proxy** to bypass server protections using the local bridge (recommended), or **Direct** if you don't need proxying.
+   - **Full Mode**: For **Target Subtitles Generator**. Pre-extracts the full audio track so Migaku can process it, then automatically launches the video via the local proxy.
+   - If playback fails or starts without audio, try clicking **Proxy** again or switch to **Direct**. If neither works, the stream is likely protected by strict DRM.
 7. Click **Subtitle** to automatically fetch and inject subtitles from your configured providers.
 8. If you switch to a different video source, click **Exit Video** in Migaku Player before playing again.
 
@@ -136,4 +134,4 @@ Run this whenever Migaku Player needs the bridge UI again:
 If you find this project useful, you can support me on Ko-fi ☕
 
 ## Tips
-Use `CTRL + ALT + B` to fully hide the `migaku-player-snippet` UI.
+Use `CTRL + ALT + B` to toggle (show/hide) the `migaku-player-snippet` UI.
