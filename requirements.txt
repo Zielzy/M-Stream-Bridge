@@ -1,0 +1,4 @@
+requests
+curl_cffi
+undetected-chromedriver
+selenium

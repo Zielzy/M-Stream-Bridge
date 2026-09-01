@@ -1,129 +1,400 @@
-<!doctype html>
+<!DOCTYPE html>
+<!-- ==M-Stream Bridge==
+     @name        M-Stream Bridge
+     @version     __VERSION__
+     @author      Zielzy
+     @description Local bridge for non-DRM browser streams and Migaku Player.
+     @homepage    https://github.com/Zielzy/M-Stream-Bridge
+     ==/M-Stream Bridge== -->
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>M-Stream Bridge</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>M-Stream Bridge v__VERSION__</title>
   <style>
-    * { box-sizing: border-box; }
-    body {
-      width: 320px;
+    * {
+      box-sizing: border-box;
       margin: 0;
-      background: #101114;
-      color: #f2f4f8;
-      font: 13px/1.4 system-ui, -apple-system, Segoe UI, sans-serif;
+      padding: 0;
     }
-    .wrap { padding: 14px; }
-    header {
+
+    /* Design Token System (CSS Variables) */
+    :root {
+      --bg: #f5f3fa;
+      --log-bg: #eae6f8;
+      --border: rgba(75, 0, 178, 0.08);
+      --text-main: #26124c;
+      --text-second: #5d4c82;
+      --text-muted: #8e81ac;
+
+      --primary: #4B00B2;
+      --primary-hover: #6D28D9;
+      --primary-bg: rgba(75, 0, 178, 0.08);
+
+      --shadow-dark: #cbd0ec;
+      --shadow-light: #ffffff;
+
+      --sans: "Segoe UI", Arial, sans-serif;
+      --mono: "Cascadia Mono", Consolas, monospace;
+    }
+
+    body {
+      width: 330px;
+      background: radial-gradient(circle at top left, #ffffff 0%, var(--bg) 70%, #dcd8fc 100%);
+      color: var(--text-main);
+      font-family: var(--sans);
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    /* Main Widget Container */
+    .widget {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      box-shadow: 6px 6px 16px var(--shadow-dark), -6px -6px 16px var(--shadow-light);
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Titlebar Header */
+    .titlebar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      background: var(--log-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      position: relative;
     }
-    h1 {
-      margin: 0;
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0;
-    }
-    .badge {
-      padding: 3px 8px;
-      border-radius: 6px;
-      background: #3a1f23;
-      color: #ffb4b4;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .badge.on {
-      background: #173322;
-      color: #8ff0b2;
-    }
-    .panel {
-      border: 1px solid #2b2f37;
-      border-radius: 8px;
-      padding: 10px;
-      background: #171a20;
-      margin-bottom: 10px;
-    }
-    .meta {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
+
+    .tb-left {
+      display: inline-flex;
       align-items: center;
+      z-index: 1;
     }
+
+    /* Server Status Badge */
+    .server-badge {
+      font-size: 8.5px;
+      font-weight: 800;
+      line-height: 1;
+      border-radius: 9999px;
+      padding: 3px 8px;
+      background: var(--bg);
+      box-shadow: inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);
+      border: none;
+      letter-spacing: 0.06em;
+      transition: all 0.3s ease;
+      display: inline-block;
+    }
+
+    .server-badge.online {
+      color: #10b981;
+    }
+
+    .server-badge.offline {
+      color: #ef4444;
+    }
+
+    /* Brand Header */
+    .tb-center {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      max-width: calc(100% - 128px);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tb-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      line-height: 1;
+    }
+
+    .tb-name {
+      font-family: 'Outfit', var(--sans);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--primary);
+    }
+
+    .tb-watermark {
+      font-size: 9px;
+      font-weight: 500;
+      font-family: var(--mono);
+      color: var(--text-muted);
+    }
+
+    .tb-right {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      z-index: 1;
+      justify-content: flex-end;
+    }
+
+    .tb-ver {
+      font-size: 9px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .body {
+      padding: 12px;
+    }
+
+    /* Stream Info Layout */
+    .stream-box {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      margin-bottom: 16px;
+      box-shadow: none;
+    }
+
+    .pill-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
     .pill {
-      min-width: 46px;
-      text-align: center;
-      border-radius: 6px;
-      padding: 3px 7px;
-      background: #26384f;
-      color: #a9d2ff;
-      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9.5px;
       font-weight: 700;
-      text-transform: uppercase;
+      font-family: var(--mono);
+      border-radius: 9999px;
+      padding: 3px 9px;
+      line-height: 1;
+      color: var(--text-second);
+      background: var(--bg);
+      box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
     }
+
+    .pill.hls {
+      background: rgba(75, 0, 178, 0.12);
+      color: var(--primary);
+    }
+
+    .pill.direct {
+      background: rgba(15, 118, 110, 0.12);
+      color: #0f766e;
+    }
+
+    .pill.season {
+      color: var(--text-second);
+    }
+
+    .pill.episode {
+      color: var(--text-second);
+    }
+
+    .label {
+      font-size: 9.5px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+      text-transform: lowercase;
+    }
+
     .title {
-      min-height: 20px;
-      font-weight: 650;
-      overflow-wrap: anywhere;
-    }
-    .url {
-      margin-top: 4px;
-      color: #a8b0bf;
-      font-size: 11px;
-      overflow-wrap: anywhere;
-    }
-    .actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-    button {
-      height: 34px;
-      border: 0;
-      border-radius: 7px;
-      background: #2a303a;
-      color: #f2f4f8;
+      font-family: 'Outfit', var(--sans);
+      font-size: 13.5px;
       font-weight: 700;
-      cursor: pointer;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
     }
-    button.primary {
-      grid-column: 1 / -1;
-      background: #2d5c88;
+
+    .url {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      color: var(--text-second);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background: var(--bg);
+      box-shadow: inset 1.5px 1.5px 3px var(--shadow-dark), inset -1.5px -1.5px 3px var(--shadow-light);
+      padding: 5px 8px;
+      border-radius: 6px;
+      margin-top: 6px;
     }
-    button:hover { filter: brightness(1.12); }
-    #status {
-      margin-top: 10px;
+
+    .row {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* Action Buttons */
+    .row button {
+      border: none;
+      border-radius: 9999px;
+      font-family: 'Outfit', var(--sans);
       font-size: 12px;
+      font-weight: 700;
+      padding: 8px 16px;
+      cursor: pointer;
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .ok { color: #8ff0b2; }
-    .bad { color: #ffb4b4; }
+
+    .b-migaku {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 3px 3px 8px var(--shadow-dark), -3px -3px 8px var(--shadow-light);
+    }
+
+    .row button:hover {
+      background: var(--primary-hover);
+      box-shadow: 5px 5px 12px var(--shadow-dark), -5px -5px 12px var(--shadow-light);
+      transform: translateY(-1px);
+    }
+
+    .row button:active {
+      transform: translateY(0);
+      box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.25), inset -2px -2px 4px rgba(255, 255, 255, 0.2);
+    }
+
+    /* Status Bar Footer */
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+      margin-top: 12px;
+      font-size: 10px;
+      color: var(--text-second);
+      font-family: var(--mono);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.ok {
+      background: #10b981;
+      box-shadow: 0 0 6px #10b981;
+    }
+
+    .status-dot.bad {
+      background: #ef4444;
+      box-shadow: 0 0 6px #ef4444;
+    }
+
+    .status-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      background: var(--primary);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 11px;
+      color: #ffffff;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity .2s ease, transform .2s ease;
+      pointer-events: none;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(75, 0, 178, 0.15);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>M-Stream Bridge <span style="color:#a8b0bf">vdev</span></h1>
-      <span id="server" class="badge">OFFLINE</span>
-    </header>
+  <div class="widget">
+    <!-- Floating Toast Alert -->
+    <div id="toast" class="toast"></div>
 
-    <section class="panel">
-      <div class="meta">
-        <span id="stream-type" class="pill">-</span>
+    <!-- Header / Titlebar -->
+    <div class="titlebar">
+      <div class="tb-left">
+        <span id="server-badge" class="server-badge offline">OFFLINE</span>
       </div>
-      <div id="stream-title" class="title">Checking server...</div>
-      <div id="stream-url" class="url">-</div>
-    </section>
-
-    <div class="actions">
-      <button id="open-migaku" class="primary">Open Migaku</button>
-      <button id="open-proxy">Proxy</button>
-      <button id="open-direct">Direct</button>
-      <button id="refresh">Refresh</button>
+      <div class="tb-center">
+        <div class="tb-brand">
+          <span class="tb-name">M-Stream Bridge</span>
+          <span class="tb-watermark">by Zielzy</span>
+        </div>
+      </div>
+      <div class="tb-right">
+        <span class="tb-ver">v__VERSION__</span>
+      </div>
     </div>
 
-    <div id="status" class="bad">checking</div>
+    <!-- Main Container Body -->
+    <div class="body">
+      <!-- Detected Stream Info -->
+      <div class="stream-box">
+        <div class="pill-row">
+          <div id="stream-pill" class="pill hls" style="display:none">HLS</div>
+          <div id="stream-season" class="pill season" style="display:none">S01</div>
+          <div id="stream-episode" class="pill episode" style="display:none">EP01</div>
+        </div>
+        <div class="label">stream active</div>
+        <div id="stream-title" class="title">No stream yet</div>
+        <div id="stream-url" class="url">-</div>
+      </div>
+
+      <!-- Action Button: Open Migaku Player -->
+      <div class="row">
+        <button id="btn-open-migaku" class="b-migaku"><span>Open Migaku Player</span></button>
+      </div>
+
+      <!-- Connection Status Footer -->
+      <div id="status" class="status">
+        <span class="status-dot bad"></span>
+        <span class="status-text">Initializing connection...</span>
+      </div>
+    </div>
   </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
+

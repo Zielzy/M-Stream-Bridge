@@ -1,0 +1,66 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on Windows
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: 'pip'
+
+    - name: Install Dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests curl_cffi nuitka zstandard ordered-set
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Sync and Clean Code
+      shell: bash
+      env:
+        ENV_FILE_SECRET: ${{ secrets.ENV_FILE }}
+      run: python scripts/build.py
+
+    - name: Get Version
+      id: get_version
+      shell: bash
+      run: |
+        VERSION=$(python -c "import json; print(json.load(open('index.min.json', encoding='utf-8'))['version'])")
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Build with Nuitka
+      shell: bash
+      run: |
+        cd dist
+        python -m nuitka --assume-yes-for-downloads --disable-console --onefile \
+          --include-data-file=dashboard.html=dashboard.html \
+          --include-data-dir=assets=assets \
+          --windows-icon-from-ico=assets/mstream.ico \
+          --company-name="Zielzy" \
+          --product-name="M-Stream Bridge" \
+          --file-version="${{ env.VERSION }}.0" \
+          --product-version="${{ env.VERSION }}" \
+          --file-description="M-Stream Bridge" \
+          --copyright="© 2026 Zielzy" \
+          --output-filename="M-Stream Bridge" \
+          main.py
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: M-Stream-Bridge-v${{ env.VERSION }}-Windows
+        path: |
+          dist/M-Stream Bridge.exe
+          dist/extension/
+          dist/migaku-player-snippet.js
+        retention-days: 7

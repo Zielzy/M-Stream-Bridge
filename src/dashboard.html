@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<!-- ==M-Stream Bridge==
+     @name        M-Stream Bridge
+     @version     __VERSION__
+     @author      Zielzy
+     @description Local bridge for non-DRM browser streams and Migaku Player.
+     @homepage    https://github.com/Zielzy/M-Stream-Bridge
+     ==/M-Stream Bridge== -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>M-Stream Bridge | Dashboard</title>
+  <link rel="stylesheet" href="/assets/css/dashboard.css?v=__VERSION__" />
+</head>
+<body>
+  <script>
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark");
+    }
+  </script>
+
+  <div class="wrap">
+    <!-- ==================================================================== -->
+    <!-- 1. Topbar Header & Theme Switcher                                    -->
+    <!-- ==================================================================== -->
+    <header class="topbar">
+      <div class="server-badge offline" id="srvBadge">
+        <div class="srv-dot" id="srvDot"></div>
+        <span id="srvText" style="letter-spacing: .04em; text-transform: uppercase;">OFFLINE</span>
+      </div>
+
+      <div class="tb-divider"></div>
+
+      <div class="tb-brand">
+        <span class="tb-name">M-Stream Bridge</span>
+        <a href="https://github.com/Zielzy/M-Stream-Bridge" target="_blank" class="tb-watermark" style="text-decoration: none;">by Zielzy</a>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme">
+        <svg id="themeIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+
+      <div class="topbar-clock" id="clock">-</div>
+    </header>
+
+    <!-- ==================================================================== -->
+    <!-- 2. Sidebar Navigation & Actions                                      -->
+    <!-- ==================================================================== -->
+    <aside class="sidebar">
+      <div class="nav-section">Menu</div>
+
+      <div class="nav-item active" onclick="showPanel('home')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+        <span>Overview</span>
+      </div>
+
+      <div class="nav-item" onclick="showPanel('api')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        <span>API Key</span>
+      </div>
+
+      <div class="nav-gap"></div>
+
+      <div class="nav-bottom">
+        <a href="https://ko-fi.com/zielzy" target="_blank" class="nav-kofi" id="btnKofi" style="text-decoration: none;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+            <line x1="6" y1="1" x2="6" y2="4"></line>
+            <line x1="10" y1="1" x2="10" y2="4"></line>
+            <line x1="14" y1="1" x2="14" y2="4"></line>
+          </svg>
+          <span>Support</span>
+        </a>
+
+        <button class="nav-shutdown" id="btnShutdown">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+            <line x1="12" y1="2" x2="12" y2="12" />
+          </svg>
+          <span>Shutdown</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ==================================================================== -->
+    <!-- 3. Main Dashboard Body                                               -->
+    <!-- ==================================================================== -->
+    <main class="main">
+      <!-- HOME PANEL -->
+      <div id="panel-home" style="height: 100%; display: flex; flex-direction: column; gap: 16px; min-height: 0;">
+        <div class="dashboard-grid">
+          <!-- LEFT: Media Viewport (70% width) -->
+          <div class="media-viewport-card">
+            <!-- Blurred backdrop banner -->
+            <img id="mediaBackdrop" class="media-backdrop" src="" alt="" />
+            <div class="media-overlay"></div>
+
+            <div class="media-viewport-content">
+              <!-- Floating Cover Art -->
+              <div class="media-cover-container">
+                <div class="media-cover-placeholder" id="mediaCoverPlaceholder">M</div>
+                <img id="mediaCoverArt" class="media-cover-art" src="" alt="" />
+              </div>
+
+              <!-- Media Details -->
+              <div class="media-info">
+                <div class="media-status-tag">Active Stream</div>
+                <div class="media-title-large" id="heroTitle">No active stream yet</div>
+
+                <div class="media-meta-row">
+                  <span class="pill pill-hls" id="heroPill" style="display: none;">HLS</span>
+                  <span class="pill pill-season" id="heroSeason" style="display: none;">S-</span>
+                  <span class="pill pill-ep" id="heroEp" style="display: none;">EP-</span>
+                </div>
+
+                <div class="media-actions-row">
+                  <div class="media-url-bar" onclick="copyUrl()" title="Click to copy URL" style="cursor: pointer;">
+                    <svg style="margin-right: 6px; flex-shrink: 0;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    </svg>
+                    <span class="media-url-text" id="heroUrl">-</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: Track Selector Column (40% width) -->
+          <div class="track-selector-column">
+            <!-- PANEL 1: Captured Stream Tracks -->
+            <div class="track-card" style="flex: 1.0; min-height: 0;">
+              <div class="log-head" style="flex-shrink: 0;">
+                <span class="card-label">Captured Stream Tracks</span>
+                <button class="btn-action-icon btn-card-clear" onclick="clearCandidates()" title="Clear Captured Tracks">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="candidate-list" id="candidatesBox">
+                <div class="candidate-empty">No captured streams yet.</div>
+              </div>
+            </div>
+
+            <!-- PANEL 2: Manual Subtitle Files (Manual Search) -->
+            <div class="track-card" style="flex: 1.5; min-height: 0;">
+              <div class="log-head" style="margin-bottom: 14px; flex-shrink: 0;">
+                <span class="card-label">Manual Subtitle Files</span>
+                <button class="btn-action-icon btn-card-clear" onclick="clearManualSubtitles()" title="Clear Subtitle Search">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="input-wrap" style="flex-shrink: 0; margin-bottom: 8px;">
+                <input class="inp" type="text" id="manualQuery" placeholder="Search subtitle files..." autocomplete="off" spellcheck="false" />
+              </div>
+
+              <div style="display: flex; gap: 8px; flex-shrink: 0; margin-top: 0; margin-bottom: 8px;">
+                <button class="btn-save" id="btnManualSearch" onclick="searchSubtitles('jimaku')" style="flex: 1; margin: 0;">
+                  Search Jimaku
+                </button>
+                <button class="btn-save" id="btnSubdlSearch" onclick="searchSubtitles('subdl')" style="flex: 1; margin: 0; background: var(--topbar-bg); color: var(--text-main);">
+                  Search SubDL
+                </button>
+              </div>
+
+              <div class="feedback" id="manualFeedback" style="flex-shrink: 0; margin-top: 0; min-height: 0;"></div>
+
+              <div class="manual-list" id="manualResultsBox">
+                <div class="manual-empty">No manual subtitle search yet.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Log Drawer -->
+        <div class="log-drawer collapsed" id="logDrawer">
+          <div class="log-drawer-header" onclick="toggleLogDrawer()">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 17 10 11 4 5" />
+                <line x1="12" y1="19" x2="20" y2="19" />
+              </svg>
+              <span>SYSTEM LOGS</span>
+            </div>
+
+            <div class="log-preview" id="logPreview">No log entries yet.</div>
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button class="btn-action-icon btn-copy-log" id="btnCopyLogs" onclick="copyLogs(event)" title="Copy Logs">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+              <svg id="drawerArrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s;">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <div class="log-drawer-content">
+            <div class="log-box" id="logBox"></div>
+          </div>
+        </div>
+
+        <!-- Hidden elements for backward compatibility -->
+        <div style="display: none;">
+          <span id="statServer"></span>
+          <span id="statJimaku"></span>
+          <span id="statFilename"></span>
+          <span id="statType"></span>
+          <span id="statEp"></span>
+          <span id="statUpdated"></span>
+          <span id="statSub"></span>
+        </div>
+      </div>
+
+      <!-- API KEY PANEL -->
+      <div id="panel-api" style="display: none; align-items: center; justify-content: flex-start;">
+        <div class="api-stack">
+          <div class="card">
+            <!-- JIMAKU CONFIG -->
+            <div class="card-head" style="margin-bottom: 14px;">
+              <div class="card-icon blue">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </div>
+              <span class="card-label">Jimaku API Key</span>
+            </div>
+
+            <div class="input-wrap">
+              <input class="inp" type="password" id="keyInput" placeholder="Paste Jimaku API key here" autocomplete="off" spellcheck="false" />
+              <button class="btn-vis" id="btnVis" onclick="toggleVis('keyInput', 'btnVis')" title="Show/hide">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- SUBDL CONFIG -->
+            <div class="card-head" style="margin-top: 16px; margin-bottom: 14px;">
+              <div class="card-icon teal">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </div>
+              <span class="card-label">Subdl API Key</span>
+            </div>
+
+            <div class="input-wrap">
+              <input class="inp" type="password" id="subdlKeyInput" placeholder="Paste Subdl API key here" autocomplete="off" spellcheck="false" />
+              <button class="btn-vis" id="btnVisSubdl" onclick="toggleVis('subdlKeyInput', 'btnVisSubdl')" title="Show/hide">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="card-head" style="margin-top: 16px; margin-bottom: 14px;">
+              <div class="card-icon teal">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <span class="card-label">Subdl Languages</span>
+            </div>
+
+            <div class="input-wrap">
+              <select class="inp" id="subdlLangsInput" style="cursor: pointer;">
+                <option value="ID">Indonesian</option>
+                <option value="EN">English</option>
+                <option value="JA">Japanese</option>
+                <option value="ZH">Chinese</option>
+                <option value="ZH-HK">Cantonese</option>
+                <option value="FR">French</option>
+                <option value="DE">German</option>
+                <option value="IT">Italian</option>
+                <option value="KO">Korean</option>
+                <option value="PT">Portuguese</option>
+                <option value="ES">Spanish</option>
+                <option value="VI">Vietnamese</option>
+              </select>
+            </div>
+
+            <button class="btn-save" id="btnSave" onclick="saveKey()">
+              Save &amp; Restart Server
+            </button>
+            <div class="feedback" id="feedback"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==================================================================== -->
+    <!-- 4. Bottom Status Bar                                                 -->
+    <!-- ==================================================================== -->
+    <div class="bottom-status-bar" id="statusBar">
+      <div class="status-left">
+        <span class="status-item">Server: http://127.0.0.1:7000</span>
+      </div>
+      <div class="status-center">
+        <span class="status-item" id="statusSubtitleInfo">No subtitle loaded</span>
+      </div>
+      <div class="status-right">
+        <span class="status-item">Version: v__VERSION__</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Toast Alert -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Shutdown Confirmation Modal -->
+  <div id="shutdownModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-title">Shutdown Server</div>
+      <div class="modal-desc">Are you sure you want to shut down the server?</div>
+      <div class="modal-actions">
+        <button id="shutdownCancel" class="btn-modal-cancel">Cancel</button>
+        <button id="shutdownConfirm" class="btn-modal-confirm">Shutdown</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- 5. Core Dashboard Logic Scripts                                      -->
+  <!-- ==================================================================== -->
+  <script src="/assets/js/dashboard.js?v=__VERSION__"></script>
+</body>
+</html>
+

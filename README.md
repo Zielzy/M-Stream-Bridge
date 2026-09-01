@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/000c078a-0680-4fc2-b40c-020f06882b53" width="450">
+  <img src="assets/images/banner.webp" width="100" alt="M-Stream Bridge Banner">
 </p>
 
-<h1 align="center">M-Stream Bridge</h1>
+<h1 align="center">M-Stream-Bridge</h1>
 
 <p align="center">
   <a href="https://github.com/Zielzy/M-Stream-Bridge/releases">
@@ -37,10 +37,10 @@ M-Stream Bridge coordinates three main layers to bridge browser media into Migak
 <table>
 <tr>
 <td>
-<img src="https://github.com/user-attachments/assets/0cea7390-06fa-4900-a714-34b22fc39ab1" width="450">
+<img src="assets/images/preview-1.webp" width="500" alt="Dashboard Preview">
 </td>
 <td>
-<img src="https://github.com/user-attachments/assets/93119495-8744-4019-b7cc-0a5508a5a049" width="450">
+<img src="assets/images/preview-2.webp" width="500" alt="Subtitle Lookup Preview">
 </td>
 </tr>
 </table>
@@ -81,7 +81,13 @@ This step is manual because Chrome extensions cannot safely install DevTools Sni
 3. Navigate to the **Sources** tab.
 4. In the left-hand navigation pane, look for **Snippets**.
 5. **If you don't see it**, click the double angle brackets (>>) to expand the hidden menu, then select **Snippets**.
-<img width="288" height="178" alt="image" src="https://github.com/user-attachments/assets/84c677cd-0b5b-461d-a8bf-f267e238559e" />
+<table>
+<tr>
+<td>
+<img src="assets/images/devtools-snippets.webp" width="288" height="178" alt="DevTools Snippets Menu">
+</td>
+</tr>
+</table>
 
 6. Create a new snippet named `migaku-player-snippet`.
 7. Open `migaku-player-snippet.js` in a text editor.

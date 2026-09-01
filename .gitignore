@@ -1,0 +1,37 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Build Outputs & Ephemeral Distributions
+/dist/
+/bin/
+/temp/
+*.build/
+*.dist/
+*.spec
+*.exe
+M-Stream Bridge
+M-Stream Bridge.bin
+M-Stream Bridge.app/
+*.zip
+M-Stream-Bridge-v*-Windows/
+M-Stream-Bridge-v*-Windows.zip
+
+# Python Cache & Artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Internal Documentation, Planning & Agent Artifacts
+AGENTS.md
+/docs/
+/tests/
+.agents/
+.codex/
+graphify-out/
+.DS_Store
+
+# Local Scripts & Test Data
+*.bat
+test_*.json
