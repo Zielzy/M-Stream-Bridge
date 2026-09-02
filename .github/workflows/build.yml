@@ -38,29 +38,57 @@ jobs:
         VERSION=$(python -c "import json; print(json.load(open('index.min.json', encoding='utf-8'))['version'])")
         echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-    - name: Build with Nuitka
+    - name: Build Core Engine with Nuitka (Standalone)
       shell: bash
       run: |
         cd dist
-        python -m nuitka --assume-yes-for-downloads --disable-console --onefile \
+        python -m nuitka --assume-yes-for-downloads --disable-console --standalone \
           --include-data-file=dashboard.html=dashboard.html \
           --include-data-dir=assets=assets \
           --windows-icon-from-ico=assets/mstream.ico \
           --company-name="Zielzy" \
-          --product-name="M-Stream Bridge" \
+          --product-name="M-Stream Bridge Core" \
           --file-version="${{ env.VERSION }}.0" \
           --product-version="${{ env.VERSION }}" \
-          --file-description="M-Stream Bridge" \
+          --file-description="M-Stream Bridge Core Engine" \
           --copyright="© 2026 Zielzy" \
-          --output-filename="M-Stream Bridge" \
+          --output-dir="build_out" \
+          --output-filename="mstream_core" \
           main.py
+
+    - name: Build Native Windows Launcher
+      shell: bash
+      run: |
+        python scripts/launcher/gen_rc.py "${{ env.VERSION }}"
+        windres launcher_gen.rc -O coff -o launcher.res
+        gcc -O2 -s -mwindows -municode scripts/launcher/launcher.c launcher.res -o "M-Stream Bridge.exe"
+
+    - name: Package Standalone Release
+      shell: bash
+      run: |
+        mkdir -p "release_staging/M-Stream-Bridge-v${{ env.VERSION }}-Windows"
+        TARGET_DIR="release_staging/M-Stream-Bridge-v${{ env.VERSION }}-Windows"
+
+        # 1. Place native launcher at root
+        cp "M-Stream Bridge.exe" "$TARGET_DIR/"
+
+        # 2. Place compiled standalone runtime in _internal/
+        mkdir -p "$TARGET_DIR/_internal"
+        NUITKA_DIST=$(find dist/build_out -maxdepth 1 -type d -name "*.dist" | head -n 1)
+        if [ -n "$NUITKA_DIST" ]; then
+          cp -r "$NUITKA_DIST"/* "$TARGET_DIR/_internal/"
+        else
+          echo "Error: Nuitka dist directory not found!"
+          exit 1
+        fi
+
+        # 3. Place extension and DevTools snippet at root
+        cp -r dist/extension "$TARGET_DIR/"
+        cp dist/migaku-player-snippet.js "$TARGET_DIR/"
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: M-Stream-Bridge-v${{ env.VERSION }}-Windows
-        path: |
-          dist/M-Stream Bridge.exe
-          dist/extension/
-          dist/migaku-player-snippet.js
+        path: release_staging/M-Stream-Bridge-v${{ env.VERSION }}-Windows/
         retention-days: 7
