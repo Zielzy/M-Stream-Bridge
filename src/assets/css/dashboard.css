@@ -511,15 +511,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 32px;
-  padding: 36px 40px;
+  gap: clamp(16px, 2.2vw, 32px);
+  padding: clamp(20px, 2.6vw, 36px);
   height: 100%;
   width: 100%;
 }
 
 .media-cover-container {
-  width: 140px;
-  height: 200px;
+  width: clamp(105px, 8.5vw, 140px);
+  height: clamp(150px, 12.5vw, 200px);
   border-radius: var(--radius-sm);
   overflow: hidden;
   box-shadow: 0 12px 40px var(--accent-glow), 0 4px 16px rgba(0, 0, 0, 0.2);
@@ -592,7 +592,7 @@ body {
 
 .media-title-large {
   font-family: var(--sans);
-  font-size: 38px;
+  font-size: clamp(20px, 2.4vw, 38px);
   font-weight: 900;
   color: var(--text-main);
   letter-spacing: -0.03em;
@@ -600,7 +600,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 
