@@ -28,7 +28,6 @@
 
   // Bootstrap dummy video configuration
   const DUMMY_DURATION_MS = 1000;
-  const DUMMY_AUDIO_GAIN = 0.002;
   const AUTO_SYNC_INTERVAL_MS = 10000;
 
   // ==========================================================================
