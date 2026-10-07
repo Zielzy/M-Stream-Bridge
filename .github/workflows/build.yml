@@ -22,8 +22,7 @@ jobs:
       shell: bash
       run: |
         python -m pip install --upgrade pip
-        pip install requests curl_cffi nuitka zstandard ordered-set
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install -r requirements.txt nuitka zstandard ordered-set
 
     - name: Sync and Clean Code
       shell: bash
