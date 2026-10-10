@@ -406,7 +406,7 @@ async function searchSubtitles(provider) {
   } else if (provider === "subdl") {
     btnId = "btnSubdlSearch";
     endpoint = "/api/subdl/manual-search";
-    providerName = "Subdl";
+    providerName = "SubDL";
   } else {
     return;
   }
@@ -1003,7 +1003,7 @@ async function fetchConfig() {
         subdlKeyInput.value = "";
         subdlKeyInput.placeholder = d.subdl_api_key_preview ? `saved (${d.subdl_api_key_preview})` : "API key saved";
       } else {
-        subdlKeyInput.placeholder = "Paste Subdl API key here";
+        subdlKeyInput.placeholder = "Paste SubDL API key here";
       }
     }
 
