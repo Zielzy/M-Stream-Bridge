@@ -1,4 +1,4 @@
-requests
-curl_cffi
-undetected-chromedriver
-selenium
+requests==2.34.2
+curl_cffi==0.16.2
+undetected-chromedriver==3.5.5
+selenium==4.48.0
