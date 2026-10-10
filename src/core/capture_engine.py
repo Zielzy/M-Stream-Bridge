@@ -1003,7 +1003,7 @@ class CaptureEngineMixin:
                                         cand["page_url"] = meta.get("page_url") or cand.get("page_url")
             else:
                 self._log(
-                    "INFO",
+                    "DEBUG",
                     f"[PAGE_META] rejected | tab_match={is_tab_match} | host_match={is_host_match}"
                     f" | top={meta.get('is_top_frame')} | url={meta.get('frame_url')!r}"
                     f" | perf={meta.get('perf_now')}"
