@@ -528,7 +528,7 @@
       if (data && data.version && isNewerVersion(data.version, VERSION)) {
         statusEl.style.color = "#d9534f";
         statusEl.style.fontWeight = "bold";
-        statusEl.innerHTML = `Update v${data.version} available! <a href="${data.download_url || "https://github.com/Zielzy/M-Stream-Bridge/releases/latest"}" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: bold; margin-left: 5px;">Get it</a>`;
+        statusEl.innerHTML = `Update v${data.version} available! <a href="${data.download_url || "https://github.com/Zielzy/M-Stream-Bridge/releases/latest"}" target="_blank" style="color: #a78bfa; text-decoration: underline; font-weight: bold; margin-left: 5px;">Get it</a>`;
       }
     } catch (_e) { }
   })();

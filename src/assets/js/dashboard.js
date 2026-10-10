@@ -1155,7 +1155,7 @@ async function checkUpdate() {
     if (data && data.version && isNewerVersion(data.version, VERSION)) {
       const el = $("toast");
       if (el) {
-        el.innerHTML = `Update v${data.version} available! <a href="${data.download_url || 'https://github.com/Zielzy/M-Stream-Bridge/releases/latest'}" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: bold; margin-left: 8px;">Get it</a>`;
+        el.innerHTML = `Update v${data.version} available! <a href="${data.download_url || 'https://github.com/Zielzy/M-Stream-Bridge/releases/latest'}" target="_blank" style="color: #a78bfa; text-decoration: underline; font-weight: bold; margin-left: 8px;">Get it</a>`;
         el.classList.add("show");
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => el.classList.remove("show"), 12000);
