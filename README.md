@@ -115,9 +115,8 @@ To enable automatic subtitle fetching, you need to provide API keys for the supp
 3. Let the video play for about 5–10 seconds.
 4. Open the extension popup and click **Open Migaku Player**.
 5. Run the `migaku-player-snippet` snippet in Migaku Player.
-6. Choose a playback mode:
-   - **Standard Mode**: For everyday watching. Select **Proxy** to bypass server protections using the local bridge (recommended), or **Direct** if you don't need proxying.
-   - **Full Mode**: For **Target Subtitles Generator**. Pre-extracts the full audio track so Migaku can process it, then automatically launches the video via the local proxy.
+6. Start playback:
+   - Click **Proxy** to bypass server protections using the local bridge (recommended), or **Direct** if you don't need proxying.
    - If playback fails or starts without audio, try clicking **Proxy** again or switch to **Direct**. If neither works, the stream is likely protected by strict DRM.
 7. Click **Subtitle** to automatically fetch and inject subtitles from your configured providers.
 8. If you switch to a different video source, click **Exit Video** in Migaku Player before playing again.
