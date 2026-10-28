@@ -273,9 +273,7 @@ class RequestsResponseAdapter:
             pass
 
 class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin, HlsProxyMixin):
-    _session = None
-    _cffi_session = None
-    _session_lock = threading.Lock()
+    _thread_local = threading.local()
     HOP_BY_HOP_HEADERS = {'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade', 'host', 'accept-encoding', 'content-length'}
     CLIENT_REPLAY_HEADERS = {'range', 'if-range', 'accept', 'accept-encoding', 'accept-language'}
     LOG_PRIORITY = {'DEBUG': 10, 'INFO': 20, 'WARN': 30, 'ERROR': 40}
@@ -662,11 +660,10 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
 
     def _perform_urlopen(self, url: str, headers: dict[str, str], timeout: float, stream: bool=False, bypass_cffi: bool=False) -> Any:
         if CURL_CFFI_AVAILABLE and (not bypass_cffi):
-            if BridgeProxyHandler._cffi_session is None:
-                with BridgeProxyHandler._session_lock:
-                    if BridgeProxyHandler._cffi_session is None:
-                        BridgeProxyHandler._cffi_session = _cffi_requests.Session(impersonate='chrome')
-            session = BridgeProxyHandler._cffi_session
+            session = getattr(BridgeProxyHandler._thread_local, 'cffi_session', None)
+            if session is None:
+                session = _cffi_requests.Session(impersonate='chrome')
+                BridgeProxyHandler._thread_local.cffi_session = session
             try:
                 resp = session.get(url, headers=headers, timeout=timeout, allow_redirects=True, stream=stream)
             except Exception as exc:
@@ -678,11 +675,10 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
                 raise HTTPError(url, resp.status_code, getattr(resp, 'reason', '') or '', resp.headers, None)
             return RequestsResponseAdapter(resp, stream=stream)
         if REQUESTS_AVAILABLE:
-            if BridgeProxyHandler._session is None:
-                with BridgeProxyHandler._session_lock:
-                    if BridgeProxyHandler._session is None:
-                        BridgeProxyHandler._session = _requests.Session()
-            session = BridgeProxyHandler._session
+            session = getattr(BridgeProxyHandler._thread_local, 'requests_session', None)
+            if session is None:
+                session = _requests.Session()
+                BridgeProxyHandler._thread_local.requests_session = session
             try:
                 resp = session.get(url, headers=headers, timeout=timeout, stream=True)
             except _requests.exceptions.Timeout as exc:

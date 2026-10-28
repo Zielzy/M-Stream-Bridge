@@ -38,8 +38,8 @@ CAPTURE_TAB_META_TTL_SEC: int = 30 * 60
 
 SEGMENT_521_RETRY_ATTEMPTS: int = max(1, int(os.environ.get("BRIDGE_SEGMENT_521_RETRY_ATTEMPTS", "3")))
 SEGMENT_521_RETRY_DELAY_SEC: float = max(0.05, float(os.environ.get("BRIDGE_SEGMENT_521_RETRY_DELAY_SEC", "0.35")))
-SEGMENT_TRANSIENT_RETRY_ATTEMPTS: int = max(1, int(os.environ.get("BRIDGE_SEGMENT_TRANSIENT_RETRY_ATTEMPTS", "3")))
-SEGMENT_TRANSIENT_RETRY_DELAY_SEC: float = max(0.05, float(os.environ.get("BRIDGE_SEGMENT_TRANSIENT_RETRY_DELAY_SEC", "0.30")))
+SEGMENT_TRANSIENT_RETRY_ATTEMPTS: int = max(1, int(os.environ.get("BRIDGE_SEGMENT_TRANSIENT_RETRY_ATTEMPTS", "5")))
+SEGMENT_TRANSIENT_RETRY_DELAY_SEC: float = max(0.05, float(os.environ.get("BRIDGE_SEGMENT_TRANSIENT_RETRY_DELAY_SEC", "0.50")))
 
 
 # =============================================================================

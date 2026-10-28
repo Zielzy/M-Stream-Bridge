@@ -404,9 +404,19 @@ class HlsProxyMixin:
                     target_url = _MASTER_TO_MEDIA_CACHE[stream_url]
                     is_internally_rewritten = True
 
-            with self._perform_urlopen(target_url, headers=hls_headers, timeout=20, stream=False) as resp:
-                data = resp.read()
-                remote_content_type = resp.headers.get("Content-Type", "")
+            data = b""
+            remote_content_type = ""
+            for attempt in range(1, 4):
+                try:
+                    with self._perform_urlopen(target_url, headers=hls_headers, timeout=20, stream=False) as resp:
+                        data = resp.read()
+                        remote_content_type = resp.headers.get("Content-Type", "")
+                    break
+                except (TimeoutError, socket.timeout, URLError) as exc:
+                    if attempt < 3:
+                        time.sleep(0.5 * attempt)
+                        continue
+                    raise
 
             if b"#EXTM3U" not in data:
                 self._log("WARN", f"upstream HLS response is not an m3u8 playlist (first bytes: {data[:64]!r}) | target={target_url[:120]}")
@@ -438,9 +448,17 @@ class HlsProxyMixin:
                                 _MASTER_TO_MEDIA_CACHE[stream_url] = media_url
 
                             # Fetch the media playlist internally
-                            with self._perform_urlopen(media_url, headers=hls_headers, timeout=20, stream=False) as m_resp:
-                                data = m_resp.read()
-                                remote_content_type = m_resp.headers.get("Content-Type", "")
+                            for attempt in range(1, 4):
+                                try:
+                                    with self._perform_urlopen(media_url, headers=hls_headers, timeout=20, stream=False) as m_resp:
+                                        data = m_resp.read()
+                                        remote_content_type = m_resp.headers.get("Content-Type", "")
+                                    break
+                                except (TimeoutError, socket.timeout, URLError) as exc:
+                                    if attempt < 3:
+                                        time.sleep(0.5 * attempt)
+                                        continue
+                                    raise
 
                             try:
                                 text = data.decode("utf-8")

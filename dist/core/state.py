@@ -25,8 +25,8 @@ MAX_CAPTURE_TAB_META: int = 200
 CAPTURE_TAB_META_TTL_SEC: int = 30 * 60
 SEGMENT_521_RETRY_ATTEMPTS: int = max(1, int(os.environ.get('BRIDGE_SEGMENT_521_RETRY_ATTEMPTS', '3')))
 SEGMENT_521_RETRY_DELAY_SEC: float = max(0.05, float(os.environ.get('BRIDGE_SEGMENT_521_RETRY_DELAY_SEC', '0.35')))
-SEGMENT_TRANSIENT_RETRY_ATTEMPTS: int = max(1, int(os.environ.get('BRIDGE_SEGMENT_TRANSIENT_RETRY_ATTEMPTS', '3')))
-SEGMENT_TRANSIENT_RETRY_DELAY_SEC: float = max(0.05, float(os.environ.get('BRIDGE_SEGMENT_TRANSIENT_RETRY_DELAY_SEC', '0.30')))
+SEGMENT_TRANSIENT_RETRY_ATTEMPTS: int = max(1, int(os.environ.get('BRIDGE_SEGMENT_TRANSIENT_RETRY_ATTEMPTS', '5')))
+SEGMENT_TRANSIENT_RETRY_DELAY_SEC: float = max(0.05, float(os.environ.get('BRIDGE_SEGMENT_TRANSIENT_RETRY_DELAY_SEC', '0.50')))
 
 def get_initial_stream_state() -> dict[str, Any]:
     return {'stream_url': None, 'stream_type': 'hls', 'm3u8_url': None, 'episode': None, 'season': None, 'detected_episode': None, 'referer': '', 'page_url': '', 'cookie': '', 'user_agent': '', 'origin': '', 'request_headers': {}, 'url_header_map': {}, 'hls_master_url': '', 'subtitle_url': '', 'subtitle_filename': '', 'title': 'Untitled Stream', 'display_title': '', 'title_candidates': [], 'updated_at': None, 'content_type': '', 'title_source': '', 'title_updated_at': 0.0}
