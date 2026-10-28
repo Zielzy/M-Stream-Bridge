@@ -74,18 +74,19 @@ class TMDBService:
 
             try:
                 stream_obj, title, stream_id = task
+                norm_title = (title or "").strip().lower()
 
                 # 1. Skip if this is an outdated task in the queue (Queue Optimization)
-                if self.latest_tasks.get(stream_id) != title:
+                if (self.latest_tasks.get(stream_id) or "").strip().lower() != norm_title:
                     continue
 
                 # 2. Early Race Condition check (has stream title changed?)
-                if stream_obj.get("display_title") != title:
+                if (stream_obj.get("display_title") or "").strip().lower() != norm_title:
                     continue
 
                 # 3. Check Cache
-                if title in self.cache:
-                    stream_obj["tmdb"] = self.cache[title]
+                if norm_title in self.cache:
+                    stream_obj["tmdb"] = self.cache[norm_title]
                     continue
 
                 # 4. Fetch from TMDB
@@ -117,10 +118,10 @@ class TMDBService:
                 # Cache Eviction (FIFO)
                 if len(self.cache) >= self.max_cache:
                     del self.cache[next(iter(self.cache))]
-                self.cache[title] = tmdb_data
+                self.cache[norm_title] = tmdb_data
 
                 # 5. Final Race Condition Check before assigning to memory
-                if stream_obj.get("display_title") == title:
+                if (stream_obj.get("display_title") or "").strip().lower() == norm_title:
                     stream_obj["tmdb"] = tmdb_data
 
             except Exception as e:

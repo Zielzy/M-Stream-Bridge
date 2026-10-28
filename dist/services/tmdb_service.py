@@ -55,12 +55,13 @@ class TMDBService:
                 continue
             try:
                 stream_obj, title, stream_id = task
-                if self.latest_tasks.get(stream_id) != title:
+                norm_title = (title or '').strip().lower()
+                if (self.latest_tasks.get(stream_id) or '').strip().lower() != norm_title:
                     continue
-                if stream_obj.get('display_title') != title:
+                if (stream_obj.get('display_title') or '').strip().lower() != norm_title:
                     continue
-                if title in self.cache:
-                    stream_obj['tmdb'] = self.cache[title]
+                if norm_title in self.cache:
+                    stream_obj['tmdb'] = self.cache[norm_title]
                     continue
                 queries = generate_tmdb_queries(title)
                 data = tmdb_search(session, self.api_key, queries)
@@ -80,8 +81,8 @@ class TMDBService:
                     self._log('DEBUG', f'[TMDB] No artwork found for {title!r}')
                 if len(self.cache) >= self.max_cache:
                     del self.cache[next(iter(self.cache))]
-                self.cache[title] = tmdb_data
-                if stream_obj.get('display_title') == title:
+                self.cache[norm_title] = tmdb_data
+                if (stream_obj.get('display_title') or '').strip().lower() == norm_title:
                     stream_obj['tmdb'] = tmdb_data
             except Exception as e:
                 self._log('ERROR', f'[TMDBService] Worker failed: {e}')

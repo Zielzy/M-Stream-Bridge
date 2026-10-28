@@ -31,8 +31,8 @@ from core.hls_proxy import HlsProxyMixin
 from core.state import CAPTURE_TAB_META_TTL_SEC, HOST, LOG_BUFFER, LOG_LEVEL, LOG_LOCK, LOG_PREFIX, LOG_TOTAL_COUNT, MAX_BODY_BYTES, MAX_CAPTURE_CANDIDATES, MAX_CAPTURE_TAB_META, MAX_LOG_ENTRIES, MAX_MANUAL_SUBTITLE_CANDIDATES, MAX_URL_HEADER_MAP, MAX_URL_HEADER_MAP_PER_HOST, PORT, SEGMENT_521_RETRY_ATTEMPTS, SEGMENT_521_RETRY_DELAY_SEC, SEGMENT_TRANSIENT_RETRY_ATTEMPTS, SEGMENT_TRANSIENT_RETRY_DELAY_SEC, STATE_LOCK, capture_active_state, capture_candidates, capture_tab_meta, current_stream, manual_subtitle_candidates, manual_subtitle_pin, srt_store
 from subtitle_providers.jimaku import JimakuBridge, _is_subtitle_like_url, _stream_key
 from subtitle_providers.subdl import SubdlProvider
-from utils.audio_extractor import get_audio_temp_path, get_extraction_status, start_extraction_async
-from utils.ffmpeg_downloader import download_ffmpeg_async, is_ffmpeg_installed
+from utils.audio_extractor import cancel_extraction, get_audio_temp_path, get_extraction_status, start_extraction_async
+from utils.ffmpeg_downloader import download_ffmpeg_async, get_download_status
 from utils.title_parser import clean_media_title
 if sys.stdout:
     try:
@@ -274,6 +274,16 @@ class RequestsResponseAdapter:
 
 class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin, HlsProxyMixin):
     _thread_local = threading.local()
+
+    @classmethod
+    def _get_requests_session(cls) -> Any:
+        if not REQUESTS_AVAILABLE:
+            return None
+        session = getattr(cls._thread_local, 'requests_session', None)
+        if session is None:
+            session = _requests.Session()
+            cls._thread_local.requests_session = session
+        return session
     HOP_BY_HOP_HEADERS = {'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade', 'host', 'accept-encoding', 'content-length'}
     CLIENT_REPLAY_HEADERS = {'range', 'if-range', 'accept', 'accept-encoding', 'accept-language'}
     LOG_PRIORITY = {'DEBUG': 10, 'INFO': 20, 'WARN': 30, 'ERROR': 40}
@@ -675,10 +685,7 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
                 raise HTTPError(url, resp.status_code, getattr(resp, 'reason', '') or '', resp.headers, None)
             return RequestsResponseAdapter(resp, stream=stream)
         if REQUESTS_AVAILABLE:
-            session = getattr(BridgeProxyHandler._thread_local, 'requests_session', None)
-            if session is None:
-                session = _requests.Session()
-                BridgeProxyHandler._thread_local.requests_session = session
+            session = self._get_requests_session()
             try:
                 resp = session.get(url, headers=headers, timeout=timeout, stream=True)
             except _requests.exceptions.Timeout as exc:
@@ -832,6 +839,12 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
         if self.path == '/api/subdl/manual-search':
             self._handle_subdl_manual_search()
             return
+        if self.path == '/api/extract-audio':
+            self._handle_extract_audio()
+            return
+        if self.path == '/api/extract-audio/cancel':
+            self._handle_extract_audio_cancel()
+            return
         if self.path == '/api/shutdown':
             self._handle_shutdown()
             return
@@ -844,7 +857,7 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
         if path in {'/', '/dashboard'}:
             self._handle_dashboard()
             return
-        if path in {'/mstream.png', '/favicon.ico'}:
+        if path == '/mstream.png':
             self._handle_mstream_png()
             return
         if path.startswith('/assets/'):
@@ -876,6 +889,9 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
             return
         if path == '/api/stream-duration':
             self._handle_stream_duration(qs)
+            return
+        if path == '/api/extract-audio/progress':
+            self._handle_extract_audio_progress()
             return
         if path == '/api/extract-audio/file':
             self._handle_extract_audio_file()
@@ -1028,11 +1044,13 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
             return
         tmdb_api_key = load_tmdb_api_key()
         try:
-            if BridgeProxyHandler._session is None:
-                BridgeProxyHandler._session = _requests.Session()
+            session = self._get_requests_session()
+            if session is None:
+                self._send_json(503, {'coverUrl': '', 'bannerUrl': ''}, allow_cors=True)
+                return
             from utils.tmdb_search import generate_tmdb_queries, tmdb_search
             queries = generate_tmdb_queries(title)
-            data = tmdb_search(BridgeProxyHandler._session, tmdb_api_key, queries)
+            data = tmdb_search(session, tmdb_api_key, queries)
             best_item = None
             for item in data:
                 if item.get('media_type') in ('movie', 'tv'):
@@ -1056,9 +1074,12 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
             self._send_json(400, {'status': 'error', 'message': 'invalid url'}, allow_cors=True)
             return
         try:
-            if BridgeProxyHandler._session is None:
-                BridgeProxyHandler._session = _requests.Session()
-            resp = BridgeProxyHandler._session.get(url, timeout=10)
+            session = self._get_requests_session()
+            if session is None:
+                self.send_response(503)
+                self.end_headers()
+                return
+            resp = session.get(url, timeout=10)
             if resp.status_code != 200:
                 self.send_response(resp.status_code)
                 self.end_headers()
@@ -1069,7 +1090,8 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
             self.send_header('Cache-Control', 'public, max-age=86400')
             self.end_headers()
             self.wfile.write(resp.content)
-        except Exception:
+        except Exception as exc:
+            self._log('ERROR', f'[IMAGE] Proxy fetch failed: {exc}')
             self.send_response(500)
             self.end_headers()
 
@@ -1542,20 +1564,12 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
             capture_active_state.update({'score': score, 'url_key': url_key, 'tab_id': tab_id, 'updated_at': now})
             return True
 
-    def _trigger_audio_extraction(self) -> bool:
-        if not is_ffmpeg_installed():
-            download_ffmpeg_async()
-            for _ in range(120):
-                if is_ffmpeg_installed():
-                    break
-                time.sleep(0.25)
-            if not is_ffmpeg_installed():
-                self._log('ERROR', 'FFmpeg is not installed.')
-                return False
+    def _handle_extract_audio(self) -> None:
         snapshot = self._snapshot_stream()
         url = snapshot.get('stream_url') or snapshot.get('hls_master_url') or ''
         if not url:
-            return False
+            self._send_json(400, {'status': 'error', 'message': 'No active stream found.'})
+            return
         parsed_url = urllib.parse.urlparse(url)
         if parsed_url.path.endswith('.m3u8') and (not any((kw in url.lower() for kw in ['master', 'main']))):
             active_host = parsed_url.netloc
@@ -1568,17 +1582,22 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
         header_dict, _ = self._find_hls_headers_for_url(url, stream_snapshot=snapshot)
         stream_type = snapshot.get('stream_type', 'hls')
         start_extraction_async(url, header_dict, stream_type=stream_type)
-        return True
+        self._send_json(200, {'status': 'ok', 'message': 'Extraction started'})
+
+    def _handle_extract_audio_cancel(self) -> None:
+        cancel_extraction()
+        self._send_json(200, {'status': 'ok', 'message': 'Extraction cancelled'})
+
+    def _handle_extract_audio_progress(self) -> None:
+        dl_status = get_download_status()
+        if dl_status in ['downloading', 'idle']:
+            self._send_json(200, {'status': 'downloading_ffmpeg', 'percent': 0, 'message': 'Downloading FFmpeg dependencies...'})
+            return
+        ext_status = get_extraction_status()
+        self._send_json(200, ext_status)
 
     def _handle_extract_audio_file(self) -> None:
         path = get_audio_temp_path()
-        if not path.exists() and get_extraction_status().get('status') != 'extracting':
-            self._trigger_audio_extraction()
-        if get_extraction_status().get('status') == 'extracting':
-            for _ in range(120):
-                if get_extraction_status().get('status') != 'extracting' and path.exists():
-                    break
-                time.sleep(0.25)
         if not path.exists():
             self._send_json(404, {'status': 'error', 'message': 'Audio file not found.'})
             return
@@ -1588,7 +1607,7 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
             self._send_cors_headers()
             self.send_header('Content-Type', 'video/mp4')
             self.send_header('Content-Length', str(file_size))
-            self.send_header('Content-Disposition', 'inline; filename="audio.mp4"')
+            self.send_header('Content-Disposition', 'inline; filename="dummy_audio.mp4"')
             self.end_headers()
             with open(path, 'rb') as f:
                 while (chunk := f.read(64 * 1024)):
@@ -1665,7 +1684,10 @@ def run_server() -> None:
     print('  - GET  /proxy-subtitle-srt')
     print('  - POST /set-subtitle')
     print('  [Audio Extraction]')
-    print('  - GET  /api/extract-audio/file  (Audio Track Stream)')
+    print('  - POST /api/extract-audio')
+    print('  - GET  /api/extract-audio/progress')
+    print('  - GET  /api/extract-audio/file')
+    print('  - POST /api/extract-audio/cancel')
     print('  [Data & Settings]')
     print('  - GET  /api/artwork')
     print('  - GET  /api/image')
