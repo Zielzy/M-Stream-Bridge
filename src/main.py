@@ -118,6 +118,7 @@ from utils.audio_extractor import (
 from utils.ffmpeg_downloader import (
     download_ffmpeg_async,
     get_download_status,
+    is_ffmpeg_installed,
 )
 from utils.title_parser import clean_media_title
 
@@ -2125,12 +2126,21 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
     # Audio Extractor Handlers
     # -------------------------------------------------------------------------
 
-    def _handle_extract_audio(self) -> None:
+    def _trigger_audio_extraction(self) -> bool:
+        if not is_ffmpeg_installed():
+            download_ffmpeg_async()
+            for _ in range(120):
+                if is_ffmpeg_installed():
+                    break
+                time.sleep(0.25)
+            if not is_ffmpeg_installed():
+                self._log("ERROR", "FFmpeg is not installed.")
+                return False
+
         snapshot = self._snapshot_stream()
         url = snapshot.get("stream_url") or snapshot.get("hls_master_url") or ""
         if not url:
-            self._send_json(400, {"status": "error", "message": "No active stream found."})
-            return
+            return False
 
         # Fallback to master playlist if active stream is a high-res variant
         parsed_url = urllib.parse.urlparse(url)
@@ -2148,7 +2158,13 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
 
         # Pass original URL, headers, and stream type to extractor for direct CDN fetch
         start_extraction_async(url, header_dict, stream_type=stream_type)
-        self._send_json(200, {"status": "ok", "message": "Extraction started"})
+        return True
+
+    def _handle_extract_audio(self) -> None:
+        if self._trigger_audio_extraction():
+            self._send_json(200, {"status": "ok", "message": "Extraction started"})
+        else:
+            self._send_json(400, {"status": "error", "message": "No active stream found or FFmpeg missing."})
 
     def _handle_extract_audio_cancel(self) -> None:
         cancel_extraction()
@@ -2168,6 +2184,15 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
 
     def _handle_extract_audio_file(self) -> None:
         path = get_audio_temp_path()
+        if not path.exists() and get_extraction_status().get("status") != "extracting":
+            self._trigger_audio_extraction()
+
+        if get_extraction_status().get("status") == "extracting":
+            for _ in range(120):
+                if get_extraction_status().get("status") != "extracting" and path.exists():
+                    break
+                time.sleep(0.25)
+
         if not path.exists():
             self._send_json(404, {"status": "error", "message": "Audio file not found."})
             return
@@ -2177,7 +2202,7 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
             self._send_cors_headers()
             self.send_header("Content-Type", "video/mp4")
             self.send_header("Content-Length", str(file_size))
-            self.send_header("Content-Disposition", 'inline; filename="dummy_audio.mp4"')
+            self.send_header("Content-Disposition", 'inline; filename="audio.mp4"')
             self.end_headers()
             with open(path, "rb") as f:
                 while chunk := f.read(64 * 1024):
