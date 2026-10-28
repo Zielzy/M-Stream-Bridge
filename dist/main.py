@@ -1,12 +1,12 @@
 # ==M-Stream Bridge==
 # @name        M-Stream Bridge
-# @version     3.0.6
+# @version     3.1.0
 # @author      Zielzy
 # @description Local bridge for non-DRM browser streams and Migaku Player.
 # @homepage    https://github.com/Zielzy/M-Stream-Bridge
 # ==/M-Stream Bridge==
 from __future__ import annotations
-BRIDGE_VERSION = '3.0.6'
+BRIDGE_VERSION = '3.1.0'
 import datetime
 import hashlib
 import http.server
@@ -31,8 +31,8 @@ from core.hls_proxy import HlsProxyMixin
 from core.state import CAPTURE_TAB_META_TTL_SEC, HOST, LOG_BUFFER, LOG_LEVEL, LOG_LOCK, LOG_PREFIX, LOG_TOTAL_COUNT, MAX_BODY_BYTES, MAX_CAPTURE_CANDIDATES, MAX_CAPTURE_TAB_META, MAX_LOG_ENTRIES, MAX_MANUAL_SUBTITLE_CANDIDATES, MAX_URL_HEADER_MAP, MAX_URL_HEADER_MAP_PER_HOST, PORT, SEGMENT_521_RETRY_ATTEMPTS, SEGMENT_521_RETRY_DELAY_SEC, SEGMENT_TRANSIENT_RETRY_ATTEMPTS, SEGMENT_TRANSIENT_RETRY_DELAY_SEC, STATE_LOCK, capture_active_state, capture_candidates, capture_tab_meta, current_stream, manual_subtitle_candidates, manual_subtitle_pin, srt_store
 from subtitle_providers.jimaku import JimakuBridge, _is_subtitle_like_url, _stream_key
 from subtitle_providers.subdl import SubdlProvider
-from utils.audio_extractor import cancel_extraction, get_audio_temp_path, get_extraction_status, start_extraction_async
-from utils.ffmpeg_downloader import download_ffmpeg_async, get_download_status
+from utils.audio_extractor import get_audio_temp_path, get_extraction_status, start_extraction_async
+from utils.ffmpeg_downloader import download_ffmpeg_async, is_ffmpeg_installed
 from utils.title_parser import clean_media_title
 if sys.stdout:
     try:
@@ -836,12 +836,6 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
         if self.path == '/api/subdl/manual-search':
             self._handle_subdl_manual_search()
             return
-        if self.path == '/api/extract-audio':
-            self._handle_extract_audio()
-            return
-        if self.path == '/api/extract-audio/cancel':
-            self._handle_extract_audio_cancel()
-            return
         if self.path == '/api/shutdown':
             self._handle_shutdown()
             return
@@ -854,7 +848,7 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
         if path in {'/', '/dashboard'}:
             self._handle_dashboard()
             return
-        if path == '/mstream.png':
+        if path in {'/mstream.png', '/favicon.ico'}:
             self._handle_mstream_png()
             return
         if path.startswith('/assets/'):
@@ -886,9 +880,6 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
             return
         if path == '/api/stream-duration':
             self._handle_stream_duration(qs)
-            return
-        if path == '/api/extract-audio/progress':
-            self._handle_extract_audio_progress()
             return
         if path == '/api/extract-audio/file':
             self._handle_extract_audio_file()
@@ -1555,12 +1546,20 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
             capture_active_state.update({'score': score, 'url_key': url_key, 'tab_id': tab_id, 'updated_at': now})
             return True
 
-    def _handle_extract_audio(self) -> None:
+    def _trigger_audio_extraction(self) -> bool:
+        if not is_ffmpeg_installed():
+            download_ffmpeg_async()
+            for _ in range(120):
+                if is_ffmpeg_installed():
+                    break
+                time.sleep(0.25)
+            if not is_ffmpeg_installed():
+                self._log('ERROR', 'FFmpeg is not installed.')
+                return False
         snapshot = self._snapshot_stream()
         url = snapshot.get('stream_url') or snapshot.get('hls_master_url') or ''
         if not url:
-            self._send_json(400, {'status': 'error', 'message': 'No active stream found.'})
-            return
+            return False
         parsed_url = urllib.parse.urlparse(url)
         if parsed_url.path.endswith('.m3u8') and (not any((kw in url.lower() for kw in ['master', 'main']))):
             active_host = parsed_url.netloc
@@ -1573,22 +1572,17 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
         header_dict, _ = self._find_hls_headers_for_url(url, stream_snapshot=snapshot)
         stream_type = snapshot.get('stream_type', 'hls')
         start_extraction_async(url, header_dict, stream_type=stream_type)
-        self._send_json(200, {'status': 'ok', 'message': 'Extraction started'})
-
-    def _handle_extract_audio_cancel(self) -> None:
-        cancel_extraction()
-        self._send_json(200, {'status': 'ok', 'message': 'Extraction cancelled'})
-
-    def _handle_extract_audio_progress(self) -> None:
-        dl_status = get_download_status()
-        if dl_status in ['downloading', 'idle']:
-            self._send_json(200, {'status': 'downloading_ffmpeg', 'percent': 0, 'message': 'Downloading FFmpeg dependencies...'})
-            return
-        ext_status = get_extraction_status()
-        self._send_json(200, ext_status)
+        return True
 
     def _handle_extract_audio_file(self) -> None:
         path = get_audio_temp_path()
+        if not path.exists() and get_extraction_status().get('status') != 'extracting':
+            self._trigger_audio_extraction()
+        if get_extraction_status().get('status') == 'extracting':
+            for _ in range(120):
+                if get_extraction_status().get('status') != 'extracting' and path.exists():
+                    break
+                time.sleep(0.25)
         if not path.exists():
             self._send_json(404, {'status': 'error', 'message': 'Audio file not found.'})
             return
@@ -1598,7 +1592,7 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
             self._send_cors_headers()
             self.send_header('Content-Type', 'video/mp4')
             self.send_header('Content-Length', str(file_size))
-            self.send_header('Content-Disposition', 'inline; filename="dummy_audio.mp4"')
+            self.send_header('Content-Disposition', 'inline; filename="audio.mp4"')
             self.end_headers()
             with open(path, 'rb') as f:
                 while (chunk := f.read(64 * 1024)):
@@ -1638,7 +1632,7 @@ def run_server() -> None:
         return
     print()
     print('=' * 72)
-    print('M-Stream Bridge v3.0.6')
+    print('M-Stream Bridge v3.1.0')
     print('=' * 72)
     try:
         from core.config import get_tmdb_endpoint
@@ -1675,10 +1669,7 @@ def run_server() -> None:
     print('  - GET  /proxy-subtitle-srt')
     print('  - POST /set-subtitle')
     print('  [Audio Extraction]')
-    print('  - POST /api/extract-audio')
-    print('  - GET  /api/extract-audio/progress')
-    print('  - GET  /api/extract-audio/file')
-    print('  - POST /api/extract-audio/cancel')
+    print('  - GET  /api/extract-audio/file  (Audio Track Stream)')
     print('  [Data & Settings]')
     print('  - GET  /api/artwork')
     print('  - GET  /api/image')

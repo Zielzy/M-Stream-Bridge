@@ -1,6 +1,6 @@
 // ==M-Stream Bridge==
 // @name        M-Stream Bridge
-// @version     3.0.6
+// @version     3.1.0
 // @author      Zielzy
 // @description Local bridge for non-DRM browser streams and Migaku Player.
 // @homepage    https://github.com/Zielzy/M-Stream-Bridge
@@ -33,7 +33,7 @@ function updateThemeIcon(isDark) {
     }
 });
 
-const VERSION = "3.0.6", BRIDGE = window.location.protocol.startsWith("http") ? window.location.origin : "http://127.0.0.1:7000", $ = id => document.getElementById(id), logBox = $("logBox"), candidatesBox = $("candidatesBox"), manualResultsBox = $("manualResultsBox"), manualQuery = $("manualQuery");
+const VERSION = "3.1.0", BRIDGE = window.location.protocol.startsWith("http") ? window.location.origin : "http://127.0.0.1:7000", $ = id => document.getElementById(id), logBox = $("logBox"), candidatesBox = $("candidatesBox"), manualResultsBox = $("manualResultsBox"), manualQuery = $("manualQuery");
 
 let latestStream = null, toastTimer = null, logTotal = 0, manualQueryTouched = !1, candidatesRenderKey = "", logsFetchInFlight = !1, candidatesFetchInFlight = !1, streamFetchInFlight = !1, dashboardRefreshInFlight = !1, lastFetchedTitle = "", lastCoverUrl = "", lastBannerUrl = "";
 
@@ -555,7 +555,7 @@ async function checkUpdate() {
         });
         if (!resp.ok) return;
         const data = await resp.json();
-        if (data && data.version && isNewerVersion(data.version, "3.0.6")) {
+        if (data && data.version && isNewerVersion(data.version, "3.1.0")) {
             const el = $("toast");
             el && (el.innerHTML = `Update v${data.version} available! <a href="${data.download_url || "https://github.com/Zielzy/M-Stream-Bridge/releases/latest"}" target="_blank" style="color: #a78bfa; text-decoration: underline; font-weight: bold; margin-left: 8px;">Get it</a>`, 
             el.classList.add("show"), clearTimeout(toastTimer), toastTimer = setTimeout(() => el.classList.remove("show"), 12e3));

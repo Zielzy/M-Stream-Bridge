@@ -1,6 +1,6 @@
 // ==M-Stream Bridge==
 // @name        M-Stream Bridge
-// @version     3.0.6
+// @version     3.1.0
 // @author      Zielzy
 // @description Local bridge for non-DRM browser streams and Migaku Player.
 // @homepage    https://github.com/Zielzy/M-Stream-Bridge
@@ -647,7 +647,7 @@ function isNewerVersion(candidate, current) {
 
 async function checkUpstreamUpdate() {
     try {
-        const currentVersion = chrome.runtime.getManifest()?.version || "3.0.6", cached = await chrome.storage.local.get([ "upstreamVersion", "downloadUrl", "lastUpdateCheck" ]), now = Date.now();
+        const currentVersion = chrome.runtime.getManifest()?.version || "3.1.0", cached = await chrome.storage.local.get([ "upstreamVersion", "downloadUrl", "lastUpdateCheck" ]), now = Date.now();
         let version = cached?.upstreamVersion;
         if (!version || now - (cached?.lastUpdateCheck || 0) > 432e5) {
             const resp = await fetch("https://raw.githubusercontent.com/Zielzy/M-Stream-Bridge/main/index.min.json", {
@@ -752,7 +752,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(async details => {
 }, {
     urls: [ "<all_urls>" ]
 }, [ "responseHeaders", "extraHeaders" ]), chrome.runtime.onInstalled.addListener(() => {
-    logInfo("installed", "v3.0.6"), checkUpstreamUpdate();
+    logInfo("installed", "v3.1.0"), checkUpstreamUpdate();
 }), chrome.runtime.onStartup.addListener(() => {
     checkUpstreamUpdate();
 }), chrome.tabs.onActivated.addListener(async activeInfo => {
