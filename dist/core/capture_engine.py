@@ -1,6 +1,6 @@
 # ==M-Stream Bridge==
 # @name        M-Stream Bridge
-# @version     3.1.0
+# @version     3.0.6
 # @author      Zielzy
 # @description Local bridge for non-DRM browser streams and Migaku Player.
 # @homepage    https://github.com/Zielzy/M-Stream-Bridge
@@ -96,7 +96,7 @@ class CaptureEngineMixin:
 
     def _reset_stream_context(self, stream_obj: dict[str, Any]) -> None:
         initial = get_initial_stream_state()
-        keys_to_preserve = {'stream_url', 'stream_type', 'm3u8_url', 'subtitle_url', 'subtitle_filename'}
+        keys_to_preserve = {'stream_url', 'stream_type', 'm3u8_url', 'subtitle_url', 'subtitle_filename', 'tmdb'}
         for k, v in initial.items():
             if k not in keys_to_preserve:
                 stream_obj[k] = v

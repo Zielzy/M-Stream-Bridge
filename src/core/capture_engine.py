@@ -177,7 +177,7 @@ class CaptureEngineMixin:
         Uses get_initial_stream_state() so default definitions stay centralized in state.py.
         """
         initial = get_initial_stream_state()
-        keys_to_preserve = {"stream_url", "stream_type", "m3u8_url", "subtitle_url", "subtitle_filename"}
+        keys_to_preserve = {"stream_url", "stream_type", "m3u8_url", "subtitle_url", "subtitle_filename", "tmdb"}
 
         for k, v in initial.items():
             if k not in keys_to_preserve:
