@@ -73,7 +73,7 @@ function isAllowedRequestType(requestType) {
 
 function inferStreamType(url) {
     const lowered = String(url || "").toLowerCase();
-    return lowered ? lowered.includes(".m3u8") || /(\/manifest\/|\/playlist\/|master\.m3u8|index-.*\.m3u8|\/hls\d*\/|\/rendition\/)/i.test(lowered) ? "hls" : lowered.includes("videoplayback") || /\.(mp4|webm|mkv|mov|m4v)(\?|&|$)/i.test(lowered) || /(\/dl\/|\/download\/)/i.test(lowered) ? "direct" : "other" : "other";
+    return lowered && (!(lowered.includes("/api/") || lowered.includes("/episodes?") || lowered.endsWith(".json") || lowered.includes(".json?")) || lowered.includes(".m3u8") || lowered.includes(".mp4")) ? lowered.includes(".m3u8") || /(\/manifest\/|\/playlist\/|master\.m3u8|index-.*\.m3u8|\/hls\d*\/|\/rendition\/)/i.test(lowered) ? "hls" : lowered.includes("videoplayback") || /\.(mp4|webm|mkv|mov|m4v)(\?|&|$)/i.test(lowered) || /(\/dl\/|\/download\/)/i.test(lowered) ? "direct" : "other" : "other";
 }
 
 function isLikelyAudioHlsUrl(url) {
@@ -605,6 +605,17 @@ async function handleRuntimeMessage(message, sender) {
             if ("other" === streamType) return logInfo("DOM HOOK rejected (not a stream)", message.url), 
             {
                 ok: !1
+            };
+            const primary = tabRecentPrimary.get(tabId), bestCandidate = primary?.candidates?.[primary?.bestIdx ?? 0], candidateAge = bestCandidate ? Date.now() - (bestCandidate.lastSeenAt || 0) : 1 / 0;
+            if (bestCandidate && candidateAge < 25e3) return logInfo("DOM HOOK dropped (webRequest authoritative)", message.url, `candidateAge=${candidateAge}ms`), 
+            {
+                ok: !1,
+                reason: "webRequest_authoritative"
+            };
+            if (!shouldSetStream(message.url, streamType, tabId)) return logInfo("DOM HOOK rate-limited/cooldown", message.url), 
+            {
+                ok: !1,
+                reason: "cooldown"
             };
             const payload = buildPayload({
                 url: message.url,

@@ -56,6 +56,19 @@ PRIORITY_WEBREQUEST: int = 80
 PRIORITY_PAGE_META_SAME_HOST: int = 60
 PRIORITY_PAGE_META_IFRAME: int = 0
 
+# Stream Capture Source Authority (used for race condition prevention)
+SOURCE_AUTHORITY: dict[str, int] = {
+    "promote_candidate": 100,
+    "user_override": 100,
+    "manual_restore": 100,
+    "webRequest_beforeSendHeaders": 80,
+    "webRequest_onCompleted": 75,
+    "tab_switch": 60,
+    "hook": 40,
+    "page_meta_iframe": 30,
+    "unknown": 10,
+}
+
 # Merge Decision Reasons
 REASON_HIGHER_PRIO: str = "higher_priority"
 REASON_LOWER_PRIO: str = "lower_priority"
@@ -528,6 +541,16 @@ class CaptureEngineMixin:
             self._send_json(400, {"status": "error", "message": "stream_url is invalid"})
             return
 
+        lowered_stream_url = resolved_stream_url.lower()
+        if (
+            "/api/" in lowered_stream_url
+            or "/episodes?" in lowered_stream_url
+            or (lowered_stream_url.endswith(".json") or ".json?" in lowered_stream_url)
+        ) and not (".m3u8" in lowered_stream_url or ".mp4" in lowered_stream_url):
+            self._log("DEBUG", f"[{capture_source}] DROP reason=api_endpoint_blocked | capture={capture_id} | url={resolved_stream_url[:60]}")
+            self._send_json(202, {"status": "ignored", "reason": "api_endpoint_blocked"})
+            return
+
         if _is_bridge_local_url(resolved_stream_url):
             self._log("DEBUG", f"[{capture_source}] DROP reason=bridge_local | capture={capture_id} | url={resolved_stream_url[:60]}")
             self._send_json(
@@ -621,6 +644,27 @@ class CaptureEngineMixin:
                 and not self._same_hls_session(resolved_stream_url, current_stream.get("stream_url") or "")
             )
 
+            active_source = capture_active_state.get("source") or current_stream.get("stream_source", "unknown")
+            active_prio = SOURCE_AUTHORITY.get(active_source, 10)
+            incoming_prio = SOURCE_AUTHORITY.get(capture_source, 10)
+            active_age = time.time() - float(capture_active_state.get("updated_at") or 0)
+            has_active_stream = bool(current_stream.get("stream_url"))
+
+            # Authority Guard: subordinate source cannot overwrite a fresh, higher-authority stream
+            if is_new_stream and has_active_stream and not is_new_tab:
+                if active_prio > incoming_prio and active_age < 25.0:
+                    self._log("INFO", f"[{capture_source}] DROP reason=subordinate_source | active={active_source} (prio={active_prio}) | incoming={capture_source} (prio={incoming_prio}) | active_age={active_age:.1f}s | incoming_url={resolved_stream_url[:60]}")
+                    self._send_json(202, {"status": "ignored", "reason": "subordinate_source"})
+                    return
+
+                # Header Richness Guard: subordinate source with 0 headers cannot downgrade a stream with valid headers
+                has_active_headers = bool(current_stream.get("url_header_map") or current_stream.get("request_headers") or current_stream.get("cookie"))
+                has_incoming_headers = bool(incoming_map or request_headers or cookie)
+                if has_active_headers and not has_incoming_headers and active_age < 25.0 and incoming_prio < 70:
+                    self._log("INFO", f"[{capture_source}] DROP reason=headerless_downgrade | active_age={active_age:.1f}s | incoming_url={resolved_stream_url[:60]}")
+                    self._send_json(202, {"status": "ignored", "reason": "headerless_downgrade"})
+                    return
+
             # Capture true old_title BEFORE stream context reset alters current_stream["title"]
             old_title = current_stream.get("title") or ""
 
@@ -648,6 +692,7 @@ class CaptureEngineMixin:
                 current_stream["stream_url"] = resolved_stream_url
                 current_stream["stream_type"] = stream_type
                 current_stream["m3u8_url"] = resolved_stream_url
+                current_stream["stream_source"] = capture_source
             else:
                 self._log("DEBUG", f"[{capture_source}] DROP reason=hls_master_kept | capture={capture_id} | url={resolved_stream_url[:60]}")
 
@@ -736,6 +781,7 @@ class CaptureEngineMixin:
                     "score": self._capture_score(resolved_stream_url, {"response_content_type": self._guess_content_type(resolved_stream_url)}),
                     "url_key": self._normalize_header_map_key(resolved_stream_url) or resolved_stream_url,
                     "tab_id": tab_id,
+                    "source": capture_source,
                     "updated_at": time.time(),
                 })
 

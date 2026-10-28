@@ -198,8 +198,9 @@
     let streamSendTimer = null;
     function sendBestStreamCandidate() {
         if (!window.__MSTREAM_CAPTURED.length) return;
-        let best = window.__MSTREAM_CAPTURED[0], bestScore = -100;
-        for (const candidate of window.__MSTREAM_CAPTURED) {
+        let best = window.__MSTREAM_CAPTURED[window.__MSTREAM_CAPTURED.length - 1], bestScore = -100;
+        for (let i = window.__MSTREAM_CAPTURED.length - 1; i >= 0; i--) {
+            const candidate = window.__MSTREAM_CAPTURED[i];
             let score = 10;
             candidate.isMaster && (score += 1e3);
             const u = candidate.url.toLowerCase();
@@ -209,7 +210,7 @@
             u.includes("/playlist/") && (score += 20), u.includes("/manifest/") && (score += 20), 
             (u.includes(".mp4") || u.includes(".webm")) && (score += 20), u.includes("/api/") && (score -= 100), 
             u.includes("transcript") && (score -= 100), (u.includes("json") || u.includes("graphql")) && (score -= 100), 
-            u.match(/[/_-]?(init|segment|frag|part|chunk)\d*\.(mp4|m4s|m4a|m4v|webm)(\?|$)/) || (u.endsWith("init.mp4") || u.includes("init.mp4?") || u.includes("initialization") || u.includes("init-stream") || u.match(/\/(video|audio)_init/) || score > bestScore && (bestScore = score, 
+            u.match(/[/_-]?(init|segment|frag|part|chunk)\d*\.(mp4|m4s|m4a|m4v|webm)(\?|$)/) || (u.endsWith("init.mp4") || u.includes("init.mp4?") || u.includes("initialization") || u.includes("init-stream") || u.match(/\/(video|audio)_init/) || score >= bestScore && (bestScore = score, 
             best = candidate));
         }
         if (!(bestScore < 0)) try {
@@ -230,7 +231,8 @@
                 const url = event.data.payload.url;
                 if (url.includes(".ts") || url.includes(".m4s")) return;
                 if (!window.__MSTREAM_CAPTURED.find(c => c.url === url)) {
-                    if (window.__MSTREAM_CAPTURED.push(event.data.payload), event.data.payload.isMaster) return streamSendTimer && clearTimeout(streamSendTimer), 
+                    if (window.__MSTREAM_CAPTURED.push(event.data.payload), window.__MSTREAM_CAPTURED.length > 5 && window.__MSTREAM_CAPTURED.shift(), 
+                    event.data.payload.isMaster) return streamSendTimer && clearTimeout(streamSendTimer), 
                     void sendBestStreamCandidate();
                     streamSendTimer && clearTimeout(streamSendTimer), streamSendTimer = setTimeout(() => {
                         sendBestStreamCandidate();
@@ -372,6 +374,7 @@
         video && (attachObservers(video), setButtonState("VISIBLE"));
     }
     "undefined" != typeof chrome && chrome.runtime && chrome.runtime.onMessage && chrome.runtime.onMessage.addListener(message => {
-        message && "bridge_force_meta_update" === message.type && sendMeta(!0);
+        message && "bridge_force_meta_update" === message.type && (window.__MSTREAM_CAPTURED = [], 
+        streamSendTimer && clearTimeout(streamSendTimer), sendMeta(!0));
     });
 }();

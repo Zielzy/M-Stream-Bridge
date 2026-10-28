@@ -198,6 +198,14 @@ function inferStreamType(url) {
   const lowered = String(url || "").toLowerCase();
   if (!lowered) return "other";
 
+  if (
+    ((lowered.includes("/api/") || lowered.includes("/episodes?")) ||
+      lowered.endsWith(".json") || lowered.includes(".json?")) &&
+    !lowered.includes(".m3u8") && !lowered.includes(".mp4")
+  ) {
+    return "other";
+  }
+
   if (lowered.includes(".m3u8") || /(\/manifest\/|\/playlist\/|master\.m3u8|index-.*\.m3u8|\/hls\d*\/|\/rendition\/)/i.test(lowered)) {
     return "hls";
   }
@@ -1012,6 +1020,20 @@ async function handleRuntimeMessage(message, sender) {
     if (streamType === "other") {
       logInfo("DOM HOOK rejected (not a stream)", message.url);
       return { ok: false };
+    }
+
+    const primary = tabRecentPrimary.get(tabId);
+    const bestCandidate = primary?.candidates?.[primary?.bestIdx ?? 0];
+    const candidateAge = bestCandidate ? Date.now() - (bestCandidate.lastSeenAt || 0) : Infinity;
+
+    if (bestCandidate && candidateAge < 25000) {
+      logInfo("DOM HOOK dropped (webRequest authoritative)", message.url, `candidateAge=${candidateAge}ms`);
+      return { ok: false, reason: "webRequest_authoritative" };
+    }
+
+    if (!shouldSetStream(message.url, streamType, tabId)) {
+      logInfo("DOM HOOK rate-limited/cooldown", message.url);
+      return { ok: false, reason: "cooldown" };
     }
 
     const payload = buildPayload({

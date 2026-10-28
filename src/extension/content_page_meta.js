@@ -427,6 +427,9 @@
 
       if (!window.__MSTREAM_CAPTURED.find((c) => c.url === url)) {
         window.__MSTREAM_CAPTURED.push(event.data.payload);
+        if (window.__MSTREAM_CAPTURED.length > 5) {
+          window.__MSTREAM_CAPTURED.shift();
+        }
 
         if (event.data.payload.isMaster) {
           if (streamSendTimer) clearTimeout(streamSendTimer);
@@ -448,10 +451,11 @@
   function sendBestStreamCandidate() {
     if (!window.__MSTREAM_CAPTURED.length) return;
 
-    let best = window.__MSTREAM_CAPTURED[0];
+    let best = window.__MSTREAM_CAPTURED[window.__MSTREAM_CAPTURED.length - 1];
     let bestScore = -100;
 
-    for (const candidate of window.__MSTREAM_CAPTURED) {
+    for (let i = window.__MSTREAM_CAPTURED.length - 1; i >= 0; i--) {
+      const candidate = window.__MSTREAM_CAPTURED[i];
       let score = 10;
 
       if (candidate.isMaster) score += 1000;
@@ -478,7 +482,7 @@
       if (u.includes("initialization") || u.includes("init-stream")) continue;
       if (u.match(/\/(video|audio)_init/)) continue;
 
-      if (score > bestScore) {
+      if (score >= bestScore) {
         bestScore = score;
         best = candidate;
       }
@@ -740,6 +744,8 @@
   if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((message) => {
       if (message && message.type === "bridge_force_meta_update") {
+        window.__MSTREAM_CAPTURED = [];
+        if (streamSendTimer) clearTimeout(streamSendTimer);
         sendMeta(true);
       }
     });
