@@ -1156,7 +1156,7 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
         if path in {"/", "/dashboard"}:
             self._handle_dashboard()
             return
-        if path == "/mstream.png":
+        if path in {"/mstream.png", "/favicon.ico"}:
             self._handle_mstream_png()
             return
         if path.startswith("/assets/"):
