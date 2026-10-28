@@ -110,14 +110,12 @@ from subtitle_providers.jimaku import (
 )
 from subtitle_providers.subdl import SubdlProvider
 from utils.audio_extractor import (
-    cancel_extraction,
     get_audio_temp_path,
     get_extraction_status,
     start_extraction_async,
 )
 from utils.ffmpeg_downloader import (
     download_ffmpeg_async,
-    get_download_status,
     is_ffmpeg_installed,
 )
 from utils.title_parser import clean_media_title
@@ -1145,12 +1143,6 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
         if self.path == "/api/subdl/manual-search":
             self._handle_subdl_manual_search()
             return
-        if self.path == "/api/extract-audio":
-            self._handle_extract_audio()
-            return
-        if self.path == "/api/extract-audio/cancel":
-            self._handle_extract_audio_cancel()
-            return
         if self.path == "/api/shutdown":
             self._handle_shutdown()
             return
@@ -1196,9 +1188,6 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
             return
         if path == "/api/stream-duration":
             self._handle_stream_duration(qs)
-            return
-        if path == "/api/extract-audio/progress":
-            self._handle_extract_audio_progress()
             return
         if path == "/api/extract-audio/file":
             self._handle_extract_audio_file()
@@ -2160,28 +2149,6 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
         start_extraction_async(url, header_dict, stream_type=stream_type)
         return True
 
-    def _handle_extract_audio(self) -> None:
-        if self._trigger_audio_extraction():
-            self._send_json(200, {"status": "ok", "message": "Extraction started"})
-        else:
-            self._send_json(400, {"status": "error", "message": "No active stream found or FFmpeg missing."})
-
-    def _handle_extract_audio_cancel(self) -> None:
-        cancel_extraction()
-        self._send_json(200, {"status": "ok", "message": "Extraction cancelled"})
-
-    def _handle_extract_audio_progress(self) -> None:
-        dl_status = get_download_status()
-        if dl_status in ["downloading", "idle"]:
-            self._send_json(200, {
-                "status": "downloading_ffmpeg",
-                "percent": 0,
-                "message": "Downloading FFmpeg dependencies...",
-            })
-            return
-        ext_status = get_extraction_status()
-        self._send_json(200, ext_status)
-
     def _handle_extract_audio_file(self) -> None:
         path = get_audio_temp_path()
         if not path.exists() and get_extraction_status().get("status") != "extracting":
@@ -2295,10 +2262,7 @@ def run_server() -> None:
     print("  - GET  /proxy-subtitle-srt")
     print("  - POST /set-subtitle")
     print("  [Audio Extraction]")
-    print("  - POST /api/extract-audio")
-    print("  - GET  /api/extract-audio/progress")
-    print("  - GET  /api/extract-audio/file")
-    print("  - POST /api/extract-audio/cancel")
+    print("  - GET  /api/extract-audio/file  (Audio Track Stream)")
     print("  [Data & Settings]")
     print("  - GET  /api/artwork")
     print("  - GET  /api/image")
