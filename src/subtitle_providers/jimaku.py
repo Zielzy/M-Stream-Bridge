@@ -608,6 +608,11 @@ class JimakuBridge:
         base_variants_out: list[str] = []
 
         for raw in raw_values:
+            raw_clean = re.sub(r"\s*·.*$", "", raw).strip(" -|:")
+            raw_clean = SITES_RE.sub("", raw_clean).strip(" -|:")
+            if raw_clean and len(raw_clean) >= 4 and not self.STANDALONE_NOISE_RE.match(raw_clean):
+                add(raw_clean)
+
             parsed, _episode = self._parse_title(raw)
 
             cleaned_title = JimakuBridge.ROMAJI_SEASON_PATTERN.sub("", parsed)
@@ -927,7 +932,10 @@ class JimakuBridge:
                 substr_score = 1.0
             elif q_norm in c_norm or c_norm in q_norm:
                 len_ratio = min(len(q_norm), len(c_norm)) / max(len(q_norm), len(c_norm))
-                substr_score = 0.45 + (0.30 * len_ratio)
+                if c_norm.startswith(q_norm) or q_norm.startswith(c_norm):
+                    substr_score = 0.70 + (0.25 * len_ratio)
+                else:
+                    substr_score = 0.45 + (0.30 * len_ratio)
             else:
                 significant = [t for t in q_tokens if len(t) >= 4]
                 if significant:
@@ -1087,10 +1095,14 @@ class JimakuBridge:
                     srt_files = season_matched + files_without_season
                 else:
                     LOGGER.warning(
-                        "[JIMAKU] no srt matched season=%s, keeping all %s files as fallback | seasons_found=%s",
-                        season, len(srt_files),
+                        "[JIMAKU] entry only contains other seasons (%s), requested season=%s | skipping entry",
                         sorted(set(self._extract_season_from_text(item["name"]) for item in files_with_season)),
+                        season,
                     )
+                    if files_without_season:
+                        srt_files = files_without_season
+                    else:
+                        return None
 
         files_with_episode = [
             item for item in srt_files if self._extract_episode_from_filename(item["name"]) is not None
