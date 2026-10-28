@@ -28,6 +28,7 @@
 
   // Bootstrap dummy video configuration
   const DUMMY_DURATION_MS = 1000;
+  const DUMMY_AUDIO_GAIN = 0.0001;
   const AUTO_SYNC_INTERVAL_MS = 10000;
 
   // ==========================================================================
@@ -60,6 +61,22 @@
         });
       }
     } catch (_err) { }
+  }
+
+  // ==========================================================================
+  // 1b. Media Audio Source Resolver
+  // ==========================================================================
+  if (!window.__bridgeAudioSourceHooked) {
+    window.__bridgeAudioSourceHooked = true;
+    const origFetch = window.fetch;
+    window.fetch = async function (resource, options) {
+      const url = typeof resource === 'string' ? resource : (resource && resource.url ? resource.url : '');
+      const audioEl = document.getElementById('migaku-player-audio');
+      if (audioEl && url && audioEl.src && url === audioEl.src && !url.includes('127.0.0.1:7000')) {
+        return origFetch(`${BRIDGE_ORIGIN}/api/extract-audio/file`, options);
+      }
+      return origFetch.apply(this, arguments);
+    };
   }
 
   // ==========================================================================
@@ -381,7 +398,6 @@
   panel.id = PANEL_ID;
   panel.innerHTML = `
     <div class="titlebar" data-action="toggle-collapse">
-      <button data-action="back-to-select" id="bridge-back-btn">&#10094;</button>
       <div class="tb-center">
         <div class="tb-brand">
           <span class="tb-name">M-Stream Bridge</span>
@@ -394,57 +410,25 @@
       </div>
     </div>
     <div class="body">
-      <!-- MODE SELECTOR VIEW -->
-      <div id="view-mode-select" class="mode-view active">
-        <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 0;">
-          <button class="secondary" data-action="mode-standard">
-            <span>Standard Mode</span>
-          </button>
-          <button class="secondary" data-action="mode-full">
-            <span>Full Mode</span>
-          </button>
+      <div class="stream-box">
+        <div class="sb-meta">
+          <div class="sb-pill pill-hls" id="bridge-pill" style="display: none;">HLS</div>
+          <div class="sb-pill pill-season" id="bridge-season" style="display: none;">S01</div>
+          <div class="sb-pill pill-episode" id="bridge-episode" style="display: none;">EP01</div>
         </div>
+        <div class="sb-label">stream detected</div>
+        <div class="sb-title" id="bridge-title">No stream yet</div>
+        <div class="sb-url" id="bridge-url">-</div>
       </div>
 
-      <!-- FULL MODE LOADING VIEW -->
-      <div id="view-full-loading" class="mode-view">
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;">
-          <div class="status" id="bridge-fullmode-status" style="border: none; padding: 0; margin: 0;">Extracting audio...</div>
-          <div class="gs-progress-text" id="bridge-fullmode-text">0%</div>
-        </div>
-        <div class="gs-progress-container">
-          <div class="gs-progress-bar" id="bridge-fullmode-bar"></div>
-        </div>
-        <div style="font-size: 11px; color: #888; margin-bottom: 12px; line-height: 1.4;">
-          Please wait, extracting audio from the stream for Full Mode.
-        </div>
-        <div class="row">
-          <button class="secondary" data-action="cancel-fullmode"><span>Cancel</span></button>
-        </div>
+      <div class="row">
+        <button class="secondary" data-action="play-proxy"><span>Proxy</span></button>
+        <button class="secondary" data-action="play-direct"><span>Direct</span></button>
       </div>
-
-      <!-- STANDARD WATCH VIEW -->
-      <div id="view-standard-mode" class="mode-view">
-        <div class="stream-box">
-          <div class="sb-meta">
-            <div class="sb-pill pill-hls" id="bridge-pill" style="display: none;">HLS</div>
-            <div class="sb-pill pill-season" id="bridge-season" style="display: none;">S01</div>
-            <div class="sb-pill pill-episode" id="bridge-episode" style="display: none;">EP01</div>
-          </div>
-          <div class="sb-label">stream detected</div>
-          <div class="sb-title" id="bridge-title">No stream yet</div>
-          <div class="sb-url" id="bridge-url">-</div>
-        </div>
-
-        <div class="row">
-          <button class="secondary" data-action="play-proxy"><span>Proxy</span></button>
-          <button class="secondary" data-action="play-direct"><span>Direct</span></button>
-        </div>
-        <div class="row" style="margin-bottom: 8px;">
-          <button class="good" data-action="subtitle-inject-once" id="bridge-subtitle-inject"><span>Subtitle</span></button>
-        </div>
-        <div class="status" id="bridge-status">Ready</div>
+      <div class="row" style="margin-bottom: 8px;">
+        <button class="good" data-action="subtitle-inject-once" id="bridge-subtitle-inject"><span>Subtitle</span></button>
       </div>
+      <div class="status" id="bridge-status">Ready</div>
     </div>
   `;
   document.documentElement.appendChild(panel);
@@ -457,31 +441,6 @@
   const seasonEl = panel.querySelector("#bridge-season");
   const episodeEl = panel.querySelector("#bridge-episode");
   const subtitleInjectBtn = panel.querySelector("#bridge-subtitle-inject");
-
-  const viewModeSelect = panel.querySelector("#view-mode-select");
-  const viewStandardMode = panel.querySelector("#view-standard-mode");
-  const viewFullLoading = panel.querySelector("#view-full-loading");
-  const backBtn = panel.querySelector("#bridge-back-btn");
-  const fullModeStatus = panel.querySelector("#bridge-fullmode-status");
-  const fullModeBar = panel.querySelector("#bridge-fullmode-bar");
-  const fullModeText = panel.querySelector("#bridge-fullmode-text");
-
-  let fullModePollInterval = null;
-
-  function switchView(viewId) {
-    viewModeSelect.classList.remove("active");
-    viewStandardMode.classList.remove("active");
-    viewFullLoading.classList.remove("active");
-    if (viewId === "select") {
-      viewModeSelect.classList.add("active");
-      if (backBtn) backBtn.classList.remove("active");
-    } else {
-      if (backBtn) backBtn.classList.add("active");
-    }
-
-    if (viewId === "standard") viewStandardMode.classList.add("active");
-    else if (viewId === "fullmode") viewFullLoading.classList.add("active");
-  }
 
   let latestStream = null;
   let latestStreamKey = "";
@@ -1396,6 +1355,13 @@
     else void loadDurationHint(video, info, sourceUrl, hls);
     updateDurationState();
 
+    // Ensure companion Migaku audio element remains muted during video playback
+    const migakuAudio = document.getElementById('migaku-player-audio');
+    if (migakuAudio) {
+      migakuAudio.muted = true;
+      migakuAudio.volume = 0;
+    }
+
     if (isFullMode) {
       video.muted = true;
     } else {
@@ -2044,114 +2010,6 @@
     titlebarEl.addEventListener("dblclick", onTitlebarDblClick);
   }
 
-  async function startFullMode() {
-    switchView("fullmode");
-    fullModeStatus.textContent = "Starting audio extraction...";
-    fullModeBar.style.width = "0%";
-    fullModeText.textContent = "0%";
-
-    try {
-      const startResp = await fetch(`${BRIDGE_ORIGIN}/api/extract-audio`, { method: "POST" });
-      const startData = await startResp.json();
-      if (startData.status === "error") throw new Error(startData.message);
-
-      fullModePollInterval = setInterval(pollFullModeProgress, 1000);
-    } catch (err) {
-      fullModeStatus.textContent = `Error: ${err.message}`;
-      fullModeStatus.style.color = "#ef4444";
-    }
-  }
-
-  async function pollFullModeProgress() {
-    try {
-      const resp = await fetch(`${BRIDGE_ORIGIN}/api/extract-audio/progress`);
-      const data = await resp.json();
-
-      if (data.status === "downloading_ffmpeg") {
-        fullModeStatus.textContent = data.message;
-        fullModeBar.style.width = "0%";
-        fullModeText.textContent = "";
-      } else if (data.status === "extracting") {
-        fullModeStatus.textContent = "Extracting audio from stream...";
-        fullModeBar.style.width = `${data.percent}%`;
-        fullModeText.textContent = `${data.percent}%`;
-      } else if (data.status === "done") {
-        clearInterval(fullModePollInterval);
-        fullModeStatus.textContent = "Ready...";
-        fullModeBar.style.width = "100%";
-        fullModeText.textContent = "100%";
-        await bootstrapFullModePlayer();
-      } else if (data.status === "error") {
-        clearInterval(fullModePollInterval);
-        fullModeStatus.textContent = `Extraction failed: ${data.error}`;
-        fullModeStatus.style.color = "#ef4444";
-      }
-    } catch (err) {
-      console.error("Poll error", err);
-    }
-  }
-
-  async function cancelFullMode() {
-    clearInterval(fullModePollInterval);
-    try {
-      await fetch(`${BRIDGE_ORIGIN}/api/extract-audio/cancel`, { method: "POST" });
-    } catch (e) { }
-    switchView("select");
-  }
-
-  async function bootstrapFullModePlayer() {
-    try {
-      const resp = await fetch(`${BRIDGE_ORIGIN}/api/extract-audio/file`);
-      if (!resp.ok) throw new Error("Audio file not found");
-      const blob = await resp.blob();
-      const fileName = (latestStream && latestStream.title)
-        ? `${latestStream.title.replace(/[^a-zA-Z0-9_\-]/g, "_").replace(/_+/g, "_")}.mp4`
-        : "Bridge_Audio.mp4";
-      const file = new File([blob], fileName, { type: "video/mp4" });
-
-      const dt = new DataTransfer();
-      dt.items.add(file);
-
-      let ok = false;
-      const input = findLocalVideoInput();
-      if (input) {
-        try {
-          input.files = dt.files;
-          input.dispatchEvent(new Event("change", { bubbles: true }));
-          ok = true;
-        } catch (e) { }
-      }
-
-      if (!ok) {
-        const dropZone = findDropZone();
-        if (dropZone && isVisible(dropZone)) {
-          try {
-            const dragEnter = new DragEvent("dragenter", { bubbles: true, cancelable: true, dataTransfer: dt });
-            const dragOver = new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt });
-            const drop = new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt });
-            dropZone.dispatchEvent(dragEnter);
-            dropZone.dispatchEvent(dragOver);
-            dropZone.dispatchEvent(drop);
-            ok = true;
-          } catch (e) { }
-        }
-      }
-
-      if (ok) {
-        await sleep(500);
-        switchView("standard");
-        setStatus("Audio extraction complete. Initializing video stream...", false);
-        await playStream(true, true);
-      } else {
-        fullModeStatus.textContent = "Failed to find Migaku dropzone.";
-        fullModeStatus.style.color = "#ef4444";
-      }
-    } catch (err) {
-      fullModeStatus.textContent = `Error loading audio: ${err.message}`;
-      fullModeStatus.style.color = "#ef4444";
-    }
-  }
-
   // Control panel click event delegation
   panel.addEventListener("click", async function (event) {
     const actionTarget = event.target.closest("[data-action]");
@@ -2159,16 +2017,7 @@
     const action = actionTarget.getAttribute("data-action");
 
     try {
-      if (action === "back-to-select") {
-        event.stopPropagation();
-        switchView("select");
-      } else if (action === "mode-standard") {
-        switchView("standard");
-      } else if (action === "mode-full") {
-        await startFullMode();
-      } else if (action === "cancel-fullmode") {
-        await cancelFullMode();
-      } else if (action === "play-proxy") {
+      if (action === "play-proxy") {
         lastUserPlayAction = Date.now();
         setStatus("Initializing proxy playback...", false);
         await playStream(true);
@@ -2246,4 +2095,3 @@
   autoSyncStream();
   console.log(`[M-Stream Bridge v${VERSION}] ready.`);
 })();
-
