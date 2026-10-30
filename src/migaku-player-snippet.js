@@ -23,11 +23,13 @@
   const VERSION = "__VERSION__";
   const BRIDGE_ORIGIN = "http://127.0.0.1:7000";
   const PANEL_ID = "__bridge_migaku_console_panel__";
+  const TOOLBAR_ITEM_ID = "__bridge_toolbar_item__";
+  const TOOLBAR_STYLE_ID = "__bridge_toolbar_style__";
   const STATE_KEY = "__bridge_migaku_console_state__";
   const POS_STORAGE_KEY = "__bridge_migaku_panel_pos__";
 
   // Bootstrap dummy video configuration
-  const DUMMY_DURATION_MS = 1000;
+  const DUMMY_DURATION_MS = 160;
   const DUMMY_AUDIO_GAIN = 0.0001;
   const AUTO_SYNC_INTERVAL_MS = 10000;
 
@@ -110,177 +112,191 @@
   if (typeof sharedState.activeVideoStreamKey !== "string") sharedState.activeVideoStreamKey = "";
 
   // ==========================================================================
-  // 3. Style Injection (CSS)
+  // 3. Style Injection (CSS) — Migaku Dark Popover Theme
   // ==========================================================================
   const style = document.createElement("style");
   style.textContent = `
     :root {
-      --bridge-sans: "Segoe UI", Arial, sans-serif;
+      --bridge-sans: InterVariable, Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+      --bridge-btn-font: "GT Maru", InterVariable, Inter, "Segoe UI", sans-serif;
       --bridge-mono: "Cascadia Mono", Consolas, monospace;
     }
     #${PANEL_ID} {
-      --bg: #f5f3fa;
-      --log-bg: #eae6f8;
-      --border: rgba(75, 0, 178, 0.08);
-      --text-main: #26124c;
-      --text-second: #5d4c82;
-      --text-muted: #8e81ac;
-      --primary: #4B00B2;
-      --primary-hover: #6D28D9;
-      --shadow-dark: #cbd0ec;
-      --shadow-light: #ffffff;
-      --bridge-sans: "Segoe UI", Arial, sans-serif;
+      --bg: var(--background-elevation-1-secondary, #272756);
+      --bg-elevated: var(--background-elevation-2, #2b2b60);
+      --border-divider: var(--divider, rgba(255, 255, 255, 0.19));
+      --text-main: var(--primary-text, #ffffff);
+      --text-second: var(--secondary-text, rgba(255, 255, 255, 0.60));
+      --text-muted: var(--tertiary-text, rgba(255, 255, 255, 0.35));
+      --accent-1: var(--accent-1, #b272ff);
+      --accent-2: #fe4670;
+      --accent-3: #ff9345;
+      --accent-5: #00c7a4;
+      --primary-grad: linear-gradient(180deg, var(--primary-gradient-1, #ff9345) 13.89%, var(--primary-gradient-2, #fe4670) 93.25%);
+      --bridge-sans: InterVariable, Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+      --bridge-btn-font: "GT Maru", InterVariable, Inter, "Segoe UI", sans-serif;
       --bridge-mono: "Cascadia Mono", Consolas, monospace;
 
-      position: fixed;
-      right: 18px;
-      bottom: 18px;
-      width: 268px;
-      z-index: 2147483647;
-      border-radius: 12px;
-      background: var(--bg);
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      left: auto;
+      bottom: auto;
+      width: 340px;
+      z-index: 9999;
+      text-align: left;
+      border-radius: 20px;
+      background-color: var(--bg);
       color: var(--text-main);
-      border: 1px solid var(--border);
-      box-shadow: 0 12px 32px rgba(75, 0, 178, 0.16);
+      border: none;
+      box-shadow: var(
+        --shadow-elevation-3,
+        0 50px 65px rgb(0 0 0 / 17%),
+        0 15px 27.1554px rgb(0 0 0 / 10%),
+        0 8px 14.5186px rgb(0 0 0 / 8.5%),
+        0 3px 8.139px rgb(0 0 0 / 7.3%),
+        0 0.3819px 4.3225px rgb(0 0 0 / 4%),
+        0 -0.4313px 1.7987px rgb(0 0 0 / 1.3%)
+      );
       font-family: var(--bridge-sans);
+      font-feature-settings: "cv11" on;
+      -webkit-font-smoothing: antialiased;
       overflow: hidden;
-      transition: opacity 0.3s ease, box-shadow 0.2s ease;
-    }
-    #${PANEL_ID}.dragging {
-      user-select: none !important;
+      padding: 24px;
+      display: none;
+      opacity: 0;
+      transform: none;
+      pointer-events: none;
       transition: none !important;
-      box-shadow: 0 18px 42px rgba(75, 0, 178, 0.28) !important;
+    }
+    #${PANEL_ID}.-visible {
+      display: block;
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+      transition: opacity 0.1s ease;
+    }
+    #${PANEL_ID}::before {
+      content: "";
+      position: absolute;
+      top: -12px;
+      left: 0;
+      right: 0;
+      height: 12px;
+      background: transparent;
     }
     #${PANEL_ID} * { box-sizing: border-box; margin: 0; padding: 0; }
-    #${PANEL_ID} .titlebar {
+    #${PANEL_ID} .popover-header {
       display: flex;
-      align-items: center;
-      padding: 10px 12px;
-      background: var(--log-bg);
-      border-bottom: 1px solid var(--border);
-      cursor: grab;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 16px;
       user-select: none;
-      position: relative;
-    }
-    #${PANEL_ID}.dragging .titlebar {
-      cursor: grabbing !important;
-    }
-    #${PANEL_ID} .tb-left {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      z-index: 1;
-    }
-    #${PANEL_ID} .tb-right {
-      margin-left: auto;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      z-index: 1;
-    }
-    #${PANEL_ID} .tb-center {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-      max-width: calc(100% - 130px);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
     #${PANEL_ID} .tb-brand {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 1px;
+      gap: 2px;
       line-height: 1;
-      min-width: 0;
     }
     #${PANEL_ID} .tb-name {
-      font-family: 'Outfit', var(--bridge-sans);
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: var(--primary);
+      font-family: var(--bridge-sans);
+      font-feature-settings: "cv11" on;
+      font-size: 14px;
+      line-height: 18px;
+      font-weight: 900;
+      font-variation-settings: "wght" 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: var(--primary-grad);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: var(--accent-3);
+      transform: translateZ(0);
     }
     #${PANEL_ID} .tb-watermark {
-      font-size: 9px;
+      font-family: var(--bridge-sans);
+      font-size: 10px;
       font-weight: 500;
-      font-family: var(--bridge-mono);
+      color: var(--text-second);
+      text-decoration: none;
+      letter-spacing: 0.02em;
+      transition: color 0.15s ease;
+      cursor: pointer;
+    }
+    #${PANEL_ID} .tb-watermark:hover {
+      color: var(--accent-1);
+    }
+    #${PANEL_ID} .tb-sub {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    #${PANEL_ID} .tb-dot {
+      font-size: 8px;
       color: var(--text-muted);
+      user-select: none;
+    }
+    #${PANEL_ID} .tb-kofi:hover {
+      color: var(--accent-3);
     }
     #${PANEL_ID} .tb-ver {
-      font-size: 9.5px;
-      color: var(--text-muted);
-      font-family: var(--bridge-mono);
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--text-second);
+      font-family: var(--bridge-sans);
       font-weight: 600;
     }
-    #${PANEL_ID} .tb-chev {
-      font-size: 10px;
-      color: var(--text-muted);
-      transition: transform .2s;
-      z-index: 1;
+    #${PANEL_ID} .body {
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
-    #${PANEL_ID}.collapsed .tb-chev { transform: rotate(180deg); }
-    #${PANEL_ID}.collapsed .body { display: none; }
-    #${PANEL_ID} .body { padding: 12px; }
 
     #${PANEL_ID} .stream-box {
       background: transparent;
       border: none;
       border-radius: 0;
       padding: 0;
-      margin-bottom: 12px;
+      margin-bottom: 0;
       box-shadow: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
     #${PANEL_ID} .sb-pill {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 700;
-      font-family: var(--bridge-mono);
-      padding: 3px 8px;
-      border-radius: 20px;
-      line-height: 1.2;
-      color: var(--text-second);
-      background: var(--bg);
-      box-shadow: inset 1.5px 1.5px 3px var(--shadow-dark), inset -1.5px -1.5px 3px var(--shadow-light);
+      font-family: var(--bridge-sans);
+      padding: 3px 10px;
+      border-radius: 999px;
+      line-height: 1.3;
+      color: var(--text-main);
+      background-color: var(--bg-elevated);
+      border: 1.5px solid var(--border-divider);
     }
     #${PANEL_ID} .sb-meta {
       display: flex;
       align-items: center;
-      gap: 5px;
-      margin-bottom: 6px;
+      gap: 6px;
       flex-wrap: wrap;
     }
-    #${PANEL_ID} .pill-hls {
-      background: rgba(75, 0, 178, 0.12);
-      color: var(--primary);
+    #${PANEL_ID} .pill-season,
+    #${PANEL_ID} .pill-episode {
+      color: var(--text-main);
     }
-    #${PANEL_ID} .pill-direct {
-      background: rgba(15, 118, 110, 0.12);
-      color: #0F766E;
-    }
-    #${PANEL_ID} .pill-season { color: var(--text-second); }
-    #${PANEL_ID} .pill-episode { color: var(--text-second); }
 
-    #${PANEL_ID} .sb-label {
-      font-size: 9.5px;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-      font-family: var(--bridge-mono);
-      font-weight: 600;
-      text-transform: lowercase;
-    }
     #${PANEL_ID} .sb-title {
-      font-family: 'Outfit', var(--bridge-sans);
-      font-size: 13px;
+      font-family: var(--bridge-sans);
+      font-size: 16px;
+      line-height: 24px;
       font-weight: 700;
+      font-variation-settings: "wght" 700;
       color: var(--text-main);
       white-space: nowrap;
       overflow: hidden;
@@ -288,156 +304,142 @@
     }
     #${PANEL_ID} .sb-url {
       font-family: var(--bridge-mono);
-      font-size: 9.5px;
+      font-size: 12px;
+      line-height: 18px;
       color: var(--text-second);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      background: var(--bg);
-      box-shadow: inset 1.5px 1.5px 3px var(--shadow-dark), inset -1.5px -1.5px 3px var(--shadow-light);
-      padding: 4px 6px;
-      border-radius: 6px;
-      margin-top: 6px;
+      background-color: var(--bg-elevated);
+      border: 2px solid var(--border-divider);
+      padding: 8px 14px;
+      border-radius: 20px;
+      margin-top: 2px;
     }
 
-    #${PANEL_ID} .row { display: flex; gap: 6px; margin-bottom: 6px; }
+    #${PANEL_ID} .row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 0;
+    }
     #${PANEL_ID} button {
       flex: 1;
-      border: none;
-      border-radius: 20px;
-      padding: 7px 10px;
-      font-size: 11.5px;
+      height: 40px;
+      border-radius: 24px;
+      padding: 0 16px;
+      font-size: 15px;
+      line-height: 20px;
       font-weight: 700;
-      font-family: 'Outfit', var(--bridge-sans);
+      font-variation-settings: "wght" 700;
+      font-family: var(--bridge-sans);
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 0.15s ease, box-shadow 0.18s ease, border-color 0.18s ease, filter 0.18s ease;
       white-space: nowrap;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
+      gap: 6px;
     }
     #${PANEL_ID} button:hover {
-      opacity: 0.9;
       transform: translateY(-0.5px);
     }
     #${PANEL_ID} button:active {
-      transform: translateY(0);
+      transform: scale(0.98);
     }
     #${PANEL_ID} button.good {
-      background: var(--primary);
+      border: none;
+      background: var(--primary-grad);
       color: #ffffff;
-      box-shadow: 2px 2px 6px var(--shadow-dark), -2px -2px 6px var(--shadow-light);
+      box-shadow: var(--shadow-elevation-2, 0 9px 20px rgb(0 0 0 / 18%));
     }
     #${PANEL_ID} button.good:hover {
-      background: var(--primary-hover);
-      box-shadow: 3px 3px 8px var(--shadow-dark), -3px -3px 8px var(--shadow-light);
-    }
-    #${PANEL_ID} button.good:active {
-      box-shadow: inset 1.5px 1.5px 3px rgba(0, 0, 0, 0.2);
+      filter: brightness(1.06);
     }
     #${PANEL_ID} button.secondary {
-      background: var(--bg);
-      color: var(--text-second);
-      border: 1px solid var(--border);
-      box-shadow: 2px 2px 6px var(--shadow-dark), -2px -2px 6px var(--shadow-light);
+      background-color: var(--bg-elevated);
+      color: var(--text-main);
+      border: 2px solid var(--border-divider);
+      box-shadow: none;
     }
     #${PANEL_ID} button.secondary:hover {
-      color: var(--text-main);
-      box-shadow: 3px 3px 8px var(--shadow-dark), -3px -3px 8px var(--shadow-light);
-    }
-    #${PANEL_ID} button.secondary:active {
-      box-shadow: inset 1.5px 1.5px 3px var(--shadow-dark), inset -1.5px -1.5px 3px var(--shadow-light);
+      box-shadow: var(--shadow-elevation-2, 0 9px 20px rgb(0 0 0 / 18%));
+      border-color: rgba(255, 255, 255, 0.35);
     }
 
     #${PANEL_ID} .status {
-      font-size: 10px;
-      font-family: var(--bridge-mono);
+      font-size: 12px;
+      line-height: 18px;
+      font-family: var(--bridge-sans);
+      font-weight: 500;
       color: var(--text-second);
-      padding-top: 8px;
-      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      border-top: 1px solid var(--border-divider);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-top: 4px;
+      margin-top: 2px;
     }
-
-    .mode-view { display: none; }
-    .mode-view.active { display: block; }
-
-    .gs-progress-container {
-      background: var(--bg); border-radius: 8px; height: 16px; margin: 10px 0; overflow: hidden;
-      border: 1px solid var(--border); position: relative;
-      box-shadow: inset 1.5px 1.5px 3px var(--shadow-dark), inset -1.5px -1.5px 3px var(--shadow-light);
-    }
-    .gs-progress-bar {
-      height: 100%; background: var(--primary); width: 0%; transition: width 0.3s;
-    }
-    .gs-progress-text {
-      text-align: right; font-size: 11px; font-weight: bold;
-      color: var(--primary); margin-bottom: 2px;
-    }
-
-    #${PANEL_ID} #bridge-back-btn {
-      background: transparent; border: none; padding: 0; cursor: pointer; color: var(--primary);
-      display: none; box-shadow: none; width: 28px; height: 28px;
-      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-      border-radius: 6px; z-index: 10; align-items: center; justify-content: center;
-      font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; line-height: 1;
-    }
-    #${PANEL_ID} #bridge-back-btn.active { display: flex; }
-    #${PANEL_ID} #bridge-back-btn:hover { background: rgba(75, 0, 178, 0.1); transform: translateY(-50%); }
-    #${PANEL_ID} #bridge-back-btn:active { transform: translateY(-50%) scale(0.9); }
   `;
   document.documentElement.appendChild(style);
 
   // ==========================================================================
-  // 4. Render Console Panel (HTML DOM)
+  // 4. Render Console Panel (HTML DOM — Migaku Popover Style)
   // ==========================================================================
   const panel = document.createElement("section");
   panel.id = PANEL_ID;
+  panel.setAttribute("tabindex", "-1");
+  panel.style.outline = "none";
+  panel.addEventListener("mouseenter", function () {
+    if (!isBridgePanelOpen()) return;
+    const tc = panel.closest(".ToolbarContainer");
+    if (tc) {
+      tc.dispatchEvent(new Event("mouseenter", { bubbles: true }));
+      tc.dispatchEvent(new Event("focusin", { bubbles: true }));
+    }
+  });
+  panel.addEventListener("focusin", function () {
+    const tc = panel.closest(".ToolbarContainer");
+    if (tc) {
+      tc.dispatchEvent(new Event("focusin", { bubbles: true }));
+    }
+  });
   panel.innerHTML = `
-    <div class="titlebar" data-action="toggle-collapse">
-      <div class="tb-center">
-        <div class="tb-brand">
-          <span class="tb-name">M-Stream Bridge</span>
-          <span class="tb-watermark">by Zielzy</span>
+    <div class="popover-header">
+      <div class="tb-brand">
+        <span class="tb-name">M-STREAM BRIDGE</span>
+        <div class="tb-sub">
+          <a href="https://github.com/Zielzy/M-Stream-Bridge" target="_blank" rel="noopener noreferrer" class="tb-watermark">by Zielzy</a>
+          <span class="tb-dot">•</span>
+          <a href="https://ko-fi.com/zielzy" target="_blank" rel="noopener noreferrer" class="tb-watermark tb-kofi" title="Support on Ko-fi">Ko-fi</a>
         </div>
       </div>
-      <div class="tb-right">
-        <span class="tb-ver">v${VERSION}</span>
-        <span class="tb-chev">&#9650;</span>
-      </div>
+      <span class="tb-ver">v${VERSION}</span>
     </div>
     <div class="body">
       <div class="stream-box">
-        <div class="sb-meta">
-          <div class="sb-pill pill-hls" id="bridge-pill" style="display: none;">HLS</div>
+        <div class="sb-meta" id="bridge-meta" style="display: none;">
           <div class="sb-pill pill-season" id="bridge-season" style="display: none;">S01</div>
           <div class="sb-pill pill-episode" id="bridge-episode" style="display: none;">EP01</div>
         </div>
-        <div class="sb-label">stream detected</div>
         <div class="sb-title" id="bridge-title">No stream yet</div>
         <div class="sb-url" id="bridge-url">-</div>
       </div>
 
-      <div class="row">
-        <button class="secondary" data-action="play-proxy"><span>Proxy</span></button>
-        <button class="secondary" data-action="play-direct"><span>Direct</span></button>
-      </div>
-      <div class="row" style="margin-bottom: 8px;">
-        <button class="good" data-action="subtitle-inject-once" id="bridge-subtitle-inject"><span>Subtitle</span></button>
+      <div class="row" style="margin-bottom: 10px;">
+        <button class="good" data-action="play" id="bridge-play-btn"><span>Play</span></button>
+        <button class="secondary" data-action="subtitle-inject-once" id="bridge-subtitle-inject"><span>Subtitle</span></button>
       </div>
       <div class="status" id="bridge-status">Ready</div>
     </div>
   `;
+  panel.prepend(style);
   document.documentElement.appendChild(panel);
 
   // Bind DOM elements to variables for UI state manipulation
   const statusEl = panel.querySelector("#bridge-status");
   const titleEl = panel.querySelector("#bridge-title");
   const urlEl = panel.querySelector("#bridge-url");
-  const pillEl = panel.querySelector("#bridge-pill");
+  const metaEl = panel.querySelector("#bridge-meta");
   const seasonEl = panel.querySelector("#bridge-season");
   const episodeEl = panel.querySelector("#bridge-episode");
   const subtitleInjectBtn = panel.querySelector("#bridge-subtitle-inject");
@@ -458,7 +460,7 @@
    */
   function setStatus(message, isError) {
     statusEl.textContent = message;
-    statusEl.style.color = isError ? "#ef4444" : "var(--primary)";
+    statusEl.style.color = isError ? "var(--accent-2)" : "var(--text-second)";
   }
 
   // ==========================================================================
@@ -510,20 +512,10 @@
     titleEl.textContent = title;
     urlEl.textContent = url || "-";
 
-    if (url) {
-      pillEl.style.display = "inline-flex";
-      if (streamType === "direct" || /\.mp4(\?|$)/i.test(url)) {
-        pillEl.textContent = "DIRECT";
-        pillEl.className = "sb-pill pill-direct";
-      } else {
-        pillEl.textContent = "HLS";
-        pillEl.className = "sb-pill pill-hls";
-      }
-    } else {
-      pillEl.style.display = "none";
-    }
+    const hasSeason = Number.isFinite(season) && season > 0;
+    const hasEpisode = Number.isFinite(episode) && episode > 0;
 
-    if (Number.isFinite(season) && season > 0) {
+    if (hasSeason) {
       seasonEl.textContent = `S${String(Math.trunc(season)).padStart(2, "0")}`;
       seasonEl.style.display = "inline-flex";
     } else {
@@ -531,13 +523,18 @@
       seasonEl.style.display = "none";
     }
 
-    if (Number.isFinite(episode) && episode > 0) {
+    if (hasEpisode) {
       episodeEl.textContent = `EP${String(Math.trunc(episode)).padStart(2, "0")}`;
       episodeEl.style.display = "inline-flex";
     } else {
       episodeEl.textContent = "EP--";
       episodeEl.style.display = "none";
     }
+
+    if (metaEl) {
+      metaEl.style.display = hasSeason || hasEpisode ? "flex" : "none";
+    }
+    updateToolbarButtonState();
   }
 
   /**
@@ -546,9 +543,10 @@
   function clearStreamPreview() {
     titleEl.textContent = "No stream yet";
     urlEl.textContent = "-";
-    pillEl.style.display = "none";
+    if (metaEl) metaEl.style.display = "none";
     seasonEl.style.display = "none";
     episodeEl.style.display = "none";
+    updateToolbarButtonState();
   }
 
   /**
@@ -720,7 +718,7 @@
       try {
         video.currentTime = target;
         applied = true;
-        setStatus(`Playback restored to ${formatClock(target)}.`, false);
+        setStatus(`Playback restored to ${formatClock(target)}`, false);
       } catch (_err) { }
     };
 
@@ -1208,7 +1206,7 @@
         }
       };
 
-      rec.start(300);
+      rec.start(50);
       setTimeout(() => {
         try {
           rec.stop();
@@ -1219,6 +1217,53 @@
         }
       }, DUMMY_DURATION_MS);
     });
+  }
+
+  /**
+   * Prevents Migaku's Vue LocalPlayerVideo @error handler from setting hasVideoError = true
+   * when M-Stream Bridge swaps video.src or attaches Hls.js MediaSource buffers.
+   * Also clears any existing error-disabled state on the video element or Vue store.
+   * @param {HTMLVideoElement} video - Target video element.
+   */
+  function guardVideoElementErrors(video) {
+    if (!video) return;
+    try {
+      video.removeAttribute("disabled");
+      video.removeAttribute("error-disabled");
+      if (video.style && video.style.pointerEvents === "none") {
+        video.style.pointerEvents = "";
+      }
+      // Clear hasVideoError on Vue component / Pinia store if accessible
+      let vnode = video.__vueParentComponent;
+      while (vnode) {
+        if (vnode.ctx && typeof vnode.ctx === "object") {
+          if ("hasVideoError" in vnode.ctx) {
+            try { vnode.ctx.hasVideoError = false; } catch (_e) { }
+          }
+          if (vnode.ctx.playerStore && "hasVideoError" in vnode.ctx.playerStore) {
+            try { vnode.ctx.playerStore.hasVideoError = false; } catch (_e) { }
+          }
+        }
+        if (vnode.setupState && typeof vnode.setupState === "object" && "hasVideoError" in vnode.setupState) {
+          try { vnode.setupState.hasVideoError = false; } catch (_e) { }
+        }
+        vnode = vnode.parent;
+      }
+    } catch (_err) { }
+
+    if (!video._bridgeErrorGuarded) {
+      video.addEventListener(
+        "error",
+        function (evt) {
+          if (sharedState.bridgeControllingVideo || sharedState.hls || video === sharedState.activeVideo) {
+            evt.stopImmediatePropagation();
+            evt.stopPropagation();
+          }
+        },
+        true
+      );
+      video._bridgeErrorGuarded = true;
+    }
   }
 
   /**
@@ -1262,8 +1307,11 @@
    * @returns {Promise<HTMLVideoElement>} Prepared video element.
    */
   async function ensureVideoForDirectInject() {
+    sharedState.bridgeControllingVideo = true;
     try {
-      return await ensureVideoElement(1800);
+      const existing = await ensureVideoElement(1800);
+      guardVideoElementErrors(existing);
+      return existing;
     } catch (_err) {
       setStatus("Initializing connection...", false);
       const ok = await bootstrapNativePlayerByDummyDrop();
@@ -1271,6 +1319,7 @@
         throw new Error("Migaku <video> element was not found.");
       }
       const video = await ensureVideoElement(12000);
+      guardVideoElementErrors(video);
 
       if (video.readyState < 1) {
         await new Promise((resolve) => {
@@ -1582,7 +1631,7 @@
         sharedState.activeVideo = null;
         sharedState.activeVideoStreamKey = "";
         setStreamPreview(current);
-        setStatus("Sync: Media stream configuration updated.", false);
+        setStatus("Sync: Media stream configuration updated", false);
         const sourceUrl = current.proxy_url || current.stream_url || current.m3u8_url;
         void loadDurationHint(null, current, sourceUrl, isHlsStream(current));
       }
@@ -1814,7 +1863,7 @@
     try {
       const stateResp = await fetch(`${BRIDGE_ORIGIN}/api/current-stream`, { cache: "no-store" });
       if (!stateResp.ok) {
-        setStatus("Subtitle error: Bridge server is offline.", true);
+        setStatus("Subtitle error: Bridge server is offline", true);
         return;
       }
       const state = await stateResp.json();
@@ -1822,7 +1871,7 @@
       const subtitleUrl = String(stream.subtitle_url || "").trim();
 
       if (!subtitleUrl) {
-        setStatus("Subtitle error: No subtitles captured yet.", true);
+        setStatus("Subtitle error: No subtitles captured yet", true);
         return;
       }
 
@@ -1841,10 +1890,10 @@
         if (fname) {
           setStatus(`Subtitle loaded: ${fname}`, false);
         } else {
-          setStatus("Subtitle injection failed: missing filename.", true);
+          setStatus("Subtitle injection failed: missing filename", true);
         }
       } else {
-        setStatus("Subtitle injection failed: dropzone element not found.", true);
+        setStatus("Subtitle injection failed: dropzone element not found", true);
       }
     } finally {
       isInjectingSubtitle = false;
@@ -1901,21 +1950,297 @@
   }
 
   /**
-   * Resets panel position to default bottom-right corner.
+   * Aligns panel right below the M-Stream Bridge toolbar button when docked.
+   */
+  function alignPanelToToolbarButton() {
+    try {
+      if (panel.parentElement && panel.parentElement.id === TOOLBAR_ITEM_ID) {
+        panel.style.left = "auto";
+        panel.style.right = "0";
+        panel.style.top = "calc(100% + 8px)";
+        panel.style.bottom = "auto";
+        return;
+      }
+      if (localStorage.getItem(POS_STORAGE_KEY)) return;
+      const items = queryAllDeep(`#${TOOLBAR_ITEM_ID}`);
+      const btn = items[0];
+      if (!btn || !btn.getBoundingClientRect) return;
+      const rect = btn.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const panelWidth = panel.offsetWidth || 280;
+      const targetTop = Math.max(58, Math.round(rect.bottom + 8));
+      const rightOffset = Math.max(12, Math.round(window.innerWidth - rect.right));
+      const clampedRight = Math.min(rightOffset, Math.max(12, window.innerWidth - panelWidth - 12));
+
+      panel.style.left = "";
+      panel.style.bottom = "auto";
+      panel.style.top = `${targetTop}px`;
+      panel.style.right = `${clampedRight}px`;
+    } catch (_err) { }
+  }
+
+  /**
+   * Returns whether the M-Stream Bridge popover is currently open and visible.
+   */
+  function isBridgePanelOpen() {
+    return panel.classList.contains("-visible") && !panel.classList.contains("collapsed");
+  }
+
+  /**
+   * Opens the popover with a smooth in-place fade-in matching Migaku's UiPopover.
+   */
+  function openBridgePanel() {
+    try {
+      if (document.body) {
+        document.body.click();
+      }
+    } catch (_err) { }
+    const tc = panel.closest(".ToolbarContainer");
+    if (tc) {
+      tc.classList.add("-m-stream-open");
+      tc.dispatchEvent(new Event("focusin", { bubbles: true }));
+    }
+    panel.style.display = "block";
+    panel.classList.remove("collapsed");
+    alignPanelToToolbarButton();
+    // Force a micro-layout reflow so CSS transition from opacity 0 -> 1 runs smoothly
+    void panel.offsetWidth;
+    panel.classList.add("-visible");
+    try {
+      panel.focus({ preventScroll: true });
+    } catch (_e) { }
+    updateToolbarButtonState();
+  }
+
+  /**
+   * Closes the popover instantly, matching native Migaku's UiPopover dismiss behavior.
+   */
+  function closeBridgePanel() {
+    panel.style.display = "none";
+    panel.classList.remove("-visible");
+    const tc = panel.closest(".ToolbarContainer");
+    if (tc) {
+      tc.classList.remove("-m-stream-open");
+    }
+    updateToolbarButtonState();
+  }
+
+  /**
+   * Updates the active & stream-ready badge state on the Migaku toolbar button.
+   */
+  function updateToolbarButtonState() {
+    try {
+      const isPanelOpen = isBridgePanelOpen();
+      const hasStream = Boolean(latestStream && (latestStream.hasStream || latestStream.stream_url));
+      const items = queryAllDeep(`#${TOOLBAR_ITEM_ID}`);
+      for (const item of items) {
+        const btn = item.querySelector(".bridge-tb-btn");
+        const dot = item.querySelector(".bridge-tb-dot");
+        if (btn) {
+          btn.classList.toggle("-active", isPanelOpen);
+        }
+        if (dot) {
+          dot.classList.toggle("-ready", hasStream);
+        }
+      }
+    } catch (_err) { }
+  }
+
+  /**
+   * Toggles the M-Stream Bridge panel when the Migaku top toolbar icon is clicked.
+   * Matches Migaku's ToolbarPopover behavior: opening our popover dispatches a click
+   * on document.body so any currently open Migaku ToolbarPopover (DISPLAY SETTINGS, etc.) closes.
+   */
+  function toggleBridgePanelFromToolbar() {
+    if (isBridgePanelOpen()) {
+      closeBridgePanel();
+    } else {
+      openBridgePanel();
+    }
+  }
+
+  /**
+   * Dismisses the M-Stream Bridge popover when clicking outside of it (and outside its toolbar trigger),
+   * matching Migaku's native ToolbarPopover click-away behavior.
+   */
+  const onDocumentClickAway = function (event) {
+    try {
+      if (!isBridgePanelOpen()) return;
+      const target = event && event.target;
+      if (!target) return;
+      if (panel.contains(target)) return;
+
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+      for (const node of path) {
+        if (node === panel || (node && node.id === TOOLBAR_ITEM_ID)) {
+          return;
+        }
+      }
+      if (target.closest && target.closest(`#${TOOLBAR_ITEM_ID}`)) return;
+
+      closeBridgePanel();
+    } catch (_err) { }
+  };
+
+  /**
+   * Dismisses the M-Stream Bridge popover on Escape key, matching Migaku's ToolbarPopover.
+   */
+  const onEscapeKey = function (event) {
+    if (event && event.key === "Escape" && isBridgePanelOpen()) {
+      closeBridgePanel();
+    }
+  };
+
+  /**
+   * Mounts the M-Stream Bridge toggle button inside Migaku's native top toolbar (.Toolbar__rightSide).
+   */
+  function ensureToolbarButtonMounted() {
+    try {
+      const rightSides = queryAllDeep(".Toolbar__rightSide");
+      if (!rightSides.length) return;
+
+      for (const toolbarRight of rightSides) {
+        if (!toolbarRight) continue;
+        let item = toolbarRight.querySelector(`#${TOOLBAR_ITEM_ID}`);
+        if (!item) {
+          const rootNode = toolbarRight.getRootNode ? toolbarRight.getRootNode() : document;
+          const styleHost = rootNode === document ? document.head || document.documentElement : rootNode;
+          if (styleHost && !(styleHost.querySelector && styleHost.querySelector(`#${TOOLBAR_STYLE_ID}`))) {
+            const tbStyle = document.createElement("style");
+            tbStyle.id = TOOLBAR_STYLE_ID;
+            tbStyle.textContent = `
+              .ToolbarContainer:has(#${PANEL_ID}.-visible),
+              .ToolbarContainer:has(#${TOOLBAR_ITEM_ID} .-visible),
+              .ToolbarContainer.-m-stream-open {
+                transform: translateY(0) !important;
+              }
+              #${TOOLBAR_ITEM_ID} {
+                position: relative;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+              }
+              #${TOOLBAR_ITEM_ID} .bridge-tb-btn {
+                color: var(--accent-1, #b272ff);
+              }
+              #${TOOLBAR_ITEM_ID} .bridge-tb-btn.-active {
+                color: #fe4670;
+              }
+              #${TOOLBAR_ITEM_ID} .bridge-tb-btn.-active svg path,
+              #${TOOLBAR_ITEM_ID} .bridge-tb-btn.-active svg line {
+                stroke: url(#__bridge_mgk_grad__);
+              }
+              #${TOOLBAR_ITEM_ID} .bridge-tb-btn.-active svg polygon {
+                fill: url(#__bridge_mgk_grad__);
+              }
+              #${TOOLBAR_ITEM_ID} .bridge-tb-dot {
+                position: absolute;
+                top: 4px;
+                right: 4px;
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.35);
+                border: 1.5px solid #202047;
+                pointer-events: none;
+                transition: background 0.2s ease, box-shadow 0.2s ease;
+              }
+              #${TOOLBAR_ITEM_ID} .bridge-tb-dot.-ready {
+                background: #00c7a4;
+                box-shadow: 0 0 6px rgba(0, 199, 164, 0.75);
+              }
+              #${TOOLBAR_ITEM_ID} .bridge-tb-tooltip {
+                pointer-events: none;
+              }
+              #${TOOLBAR_ITEM_ID} .Toolbar__control__tooltip__trigger:has(.bridge-tb-btn.-active) + .Toolbar__control__tooltip {
+                display: none !important;
+              }
+            `;
+            try { styleHost.appendChild(tbStyle); } catch (_e) { }
+          }
+
+          item = document.createElement("div");
+          item.className = "Toolbar__control__item";
+          item.id = TOOLBAR_ITEM_ID;
+          item.innerHTML = `
+            <div class="Toolbar__control__tooltip__trigger">
+              <button type="button" class="UiButton -flat -icon-only bridge-tb-btn" aria-label="M-Stream Bridge">
+                <div class="UiButton__icon">
+                  <div class="UiIcon">
+                    <div class="UiIcon__inner">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round">
+                        <defs>
+                          <linearGradient id="__bridge_mgk_grad__" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="13.89%" stop-color="#ff9345"/>
+                            <stop offset="93.25%" stop-color="#fe4670"/>
+                          </linearGradient>
+                        </defs>
+                        <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/>
+                        <line x1="2" y1="20" x2="2.01" y2="20" stroke-width="2.8"/>
+                        <polygon points="10 8.5 16 12 10 15.5 10 8.5" fill="currentColor" stroke="none"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <span class="bridge-tb-dot"></span>
+              </button>
+            </div>
+            <span role="tooltip" aria-hidden="" class="UiTypo UiTypo__caption Toolbar__control__tooltip bridge-tb-tooltip">M-Stream Bridge</span>
+          `;
+
+          const btn = item.querySelector(".bridge-tb-btn");
+          if (btn) {
+            btn.addEventListener("click", function (evt) {
+              evt.stopPropagation();
+              toggleBridgePanelFromToolbar();
+            });
+          }
+
+          toolbarRight.insertBefore(item, toolbarRight.firstChild);
+        }
+
+        if (panel && panel.parentElement !== item) {
+          item.appendChild(panel);
+        }
+        updateToolbarButtonState();
+        alignPanelToToolbarButton();
+      }
+    } catch (_err) { }
+  }
+
+  function cleanupToolbarButtons() {
+    try {
+      if (panel && panel.parentElement && panel.parentElement.id === TOOLBAR_ITEM_ID) {
+        document.documentElement.appendChild(panel);
+      }
+      for (const el of queryAllDeep(`#${TOOLBAR_ITEM_ID}, #${TOOLBAR_STYLE_ID}`)) {
+        try { el.remove(); } catch (_e) { }
+      }
+    } catch (_err) { }
+  }
+
+  /**
+   * Resets panel position to default top-right corner docked under the Migaku toolbar.
    */
   function resetPanelPosition() {
     try { localStorage.removeItem(POS_STORAGE_KEY); } catch (_err) { }
     panel.style.left = "";
-    panel.style.top = "";
+    panel.style.top = "62px";
     panel.style.right = "18px";
-    panel.style.bottom = "18px";
+    panel.style.bottom = "auto";
+    alignPanelToToolbarButton();
   }
 
   /**
    * Clamps current panel coordinates on viewport resize.
    */
   function clampPanelToViewport() {
-    if (!panel.style.left || !panel.style.top) return;
+    if (panel.parentElement && panel.parentElement.id === TOOLBAR_ITEM_ID) return;
+    if (!panel.style.left || !panel.style.top) {
+      alignPanelToToolbarButton();
+      return;
+    }
     const currentLeft = parseFloat(panel.style.left);
     const currentTop = parseFloat(panel.style.top);
     if (!Number.isFinite(currentLeft) || !Number.isFinite(currentTop)) return;
@@ -2017,14 +2342,12 @@
     const action = actionTarget.getAttribute("data-action");
 
     try {
-      if (action === "play-proxy") {
-        lastUserPlayAction = Date.now();
-        setStatus("Initializing proxy playback...", false);
+      if (action === "play") {
+        const now = Date.now();
+        if (now - lastUserPlayAction < 400) return;
+        lastUserPlayAction = now;
+        setStatus("Initializing playback...", false);
         await playStream(true);
-      } else if (action === "play-direct") {
-        lastUserPlayAction = Date.now();
-        setStatus("Initializing direct playback...", false);
-        await playStream(false);
       } else if (action === "subtitle-inject-once") {
         await runSubtitleInjectManual();
       } else if (action === "toggle-collapse") {
@@ -2033,10 +2356,11 @@
           return;
         }
         panel.classList.toggle("collapsed");
+        updateToolbarButtonState();
       }
     } catch (err) {
       console.error("[M-Stream Bridge]", err);
-      setStatus(err && err.message ? err.message : "Playback initialization failed.", true);
+      setStatus(err && err.message ? err.message : "Playback initialization failed", true);
     }
   });
 
@@ -2044,11 +2368,7 @@
   const onBridgeHotkey = function (event) {
     if (!(event.ctrlKey && event.altKey && String(event.key || "").toLowerCase() === "b")) return;
     event.preventDefault();
-    if (panel.style.display === "none") {
-      panel.style.display = "";
-    } else {
-      panel.style.display = "none";
-    }
+    toggleBridgePanelFromToolbar();
   };
 
   const onWindowFocus = function () {
@@ -2057,10 +2377,27 @@
   const onVisibilityChange = function () {
     if (!document.hidden) autoSyncStream();
   };
+  const onCaptureVideoError = function (event) {
+    const target = event && event.target;
+    if (
+      target
+      && target.tagName === "VIDEO"
+      && (sharedState.bridgeControllingVideo || sharedState.hls || target === sharedState.activeVideo)
+    ) {
+      event.stopImmediatePropagation();
+      event.stopPropagation();
+      guardVideoElementErrors(target);
+    }
+  };
 
   // Register main event listeners on document and window
   document.addEventListener("keydown", onBridgeHotkey, true);
+  document.addEventListener("keydown", onEscapeKey);
+  document.addEventListener("pointerdown", onDocumentClickAway, true);
+  document.addEventListener("click", onDocumentClickAway, true);
+  window.addEventListener("error", onCaptureVideoError, true);
   autoSyncTimer = setInterval(autoSyncStream, AUTO_SYNC_INTERVAL_MS);
+  const toolbarMountTimer = setInterval(ensureToolbarButtonMounted, 1200);
 
   window.addEventListener("focus", onWindowFocus);
   window.addEventListener("resize", clampPanelToViewport);
@@ -2069,11 +2406,16 @@
   // Cleanup callback stored on global state for instance teardown
   sharedState.cleanup = function () {
     clearInterval(autoSyncTimer);
+    clearInterval(toolbarMountTimer);
 
+    window.removeEventListener("error", onCaptureVideoError, true);
     window.removeEventListener("focus", onWindowFocus);
     window.removeEventListener("resize", clampPanelToViewport);
     document.removeEventListener("visibilitychange", onVisibilityChange);
     document.removeEventListener("keydown", onBridgeHotkey, true);
+    document.removeEventListener("keydown", onEscapeKey);
+    document.removeEventListener("pointerdown", onDocumentClickAway, true);
+    document.removeEventListener("click", onDocumentClickAway, true);
     document.removeEventListener("mousemove", onDocumentMouseMove);
     document.removeEventListener("mouseup", onDocumentMouseUp);
 
@@ -2082,6 +2424,7 @@
       titlebarEl.removeEventListener("dblclick", onTitlebarDblClick);
     }
 
+    cleanupToolbarButtons();
     destroyHls();
     try { panel.remove(); } catch (_err) { }
   };
@@ -2090,7 +2433,8 @@
   // 15. Startup Initiation
   // ==========================================================================
   applySavedPosition();
-  setStatus("Bridge connected. Ready.", false);
+  ensureToolbarButtonMounted();
+  setStatus("Bridge connected. Ready", false);
   updateDurationState();
   autoSyncStream();
   console.log(`[M-Stream Bridge v${VERSION}] ready.`);
