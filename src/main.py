@@ -2135,12 +2135,11 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
     # Audio Extractor Handlers
     # -------------------------------------------------------------------------
 
-    def _handle_extract_audio(self) -> None:
+    def _trigger_audio_extraction(self) -> bool:
         snapshot = self._snapshot_stream()
         url = snapshot.get("stream_url") or snapshot.get("hls_master_url") or ""
         if not url:
-            self._send_json(400, {"status": "error", "message": "No active stream found."})
-            return
+            return False
 
         # Fallback to master playlist if active stream is a high-res variant
         parsed_url = urllib.parse.urlparse(url)
@@ -2158,7 +2157,13 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
 
         # Pass original URL, headers, and stream type to extractor for direct CDN fetch
         start_extraction_async(url, header_dict, stream_type=stream_type)
-        self._send_json(200, {"status": "ok", "message": "Extraction started"})
+        return True
+
+    def _handle_extract_audio(self) -> None:
+        if self._trigger_audio_extraction():
+            self._send_json(200, {"status": "ok", "message": "Extraction started"})
+        else:
+            self._send_json(400, {"status": "error", "message": "No active stream found."})
 
     def _handle_extract_audio_cancel(self) -> None:
         cancel_extraction()
@@ -2178,6 +2183,15 @@ class BridgeProxyHandler(http.server.BaseHTTPRequestHandler, CaptureEngineMixin,
 
     def _handle_extract_audio_file(self) -> None:
         path = get_audio_temp_path()
+        if not path.exists() and get_extraction_status().get("status") != "extracting":
+            self._trigger_audio_extraction()
+
+        if get_extraction_status().get("status") == "extracting":
+            for _ in range(240):
+                if get_extraction_status().get("status") != "extracting" and path.exists():
+                    break
+                time.sleep(0.25)
+
         if not path.exists():
             self._send_json(404, {"status": "error", "message": "Audio file not found."})
             return

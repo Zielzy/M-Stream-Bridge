@@ -196,6 +196,15 @@ class CaptureEngineMixin:
             if k not in keys_to_preserve:
                 stream_obj[k] = v
 
+        try:
+            from utils.audio_extractor import cancel_extraction, get_audio_temp_path
+            cancel_extraction()
+            audio_path = get_audio_temp_path()
+            if audio_path.exists():
+                audio_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
     def _clean_display_title(self, raw: str) -> str:
         """Strip junk suffixes/site titles to generate clean display title."""
         return clean_media_title(raw)
