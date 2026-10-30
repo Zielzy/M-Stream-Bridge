@@ -141,15 +141,14 @@ function isSubtitleLikeUrl(url) {
     const path = parsed.pathname.toLowerCase();
     const query = parsed.search.toLowerCase();
     return (
-      /\/(?:subtitles?|captions?|cc)(?:\/|$)/i.test(path) ||
-      /(?:^|[_\-.])sub(?:[_\-.]|$)/i.test(path) ||
-      /(?:^|[_\-.])(?:eng|jpn|japanese|ja)(?:[_\-.]sub|[_\-.]cc)/i.test(path) ||
+      /(?:^|[\/._-])(?:subtitles?|captions?|cc)(?:[\/._-]|$)/i.test(path) ||
+      /(?:^|[\/._-])(?:eng|jpn|japanese|ja)(?:[_\-.](?:sub|subs|cc|caption)|[\/._-]|$)/i.test(path) ||
       /\.(?:srt|vtt|ass|ssa)(?:$|[?#])/i.test(value) ||
       /(?:^|[?&])(?:subtitle|caption|sub|cc)=/i.test(query)
     );
   } catch (_err) {
     return (
-      /\/(?:subtitles?|captions?|cc)(?:\/|$)/i.test(value) ||
+      /(?:^|[\/._-])(?:subtitles?|captions?|cc)(?:[\/._-]|$)/i.test(value) ||
       /\.(?:srt|vtt|ass|ssa)(?:$|[?#])/i.test(value)
     );
   }
@@ -260,6 +259,7 @@ function isPrimaryHlsUrl(url) {
   const hasHlsPath = /(\/hls\d*\/|\/playlist\/|\/manifest\/|\/rendition\/|\/dash\/)/i.test(lowered);
   if (!hasM3u8 && !hasHlsPath) return false;
   if (isLikelyAudioHlsUrl(lowered)) return false;
+  if (isSubtitleLikeUrl(lowered)) return false;
   if (/(seg-\d+|chunk|fragment)/i.test(lowered)) return false;
   if (hasM3u8 && /(encryption\.key|\/key\.|\.ts(\?|&|$)|\.m4s(\?|&|$)|\.jpg(\?|&|$)|\.html(\?|&|$))/i.test(lowered)) return false;
   return true;
@@ -762,6 +762,7 @@ function scoreStream(url, streamType) {
   if (u.match(/seg-\d|chunk|fragment/)) score -= 30;
   if (u.match(/(^|[\/_-])audio[\/_-\d]/)) score -= 40;
   if (u.match(/preview|thumb|low|tiny/)) score -= 20;
+  if (isSubtitleLikeUrl(u)) score -= 500;
   if (streamType === "direct" && !u.match(/audio/)) score += 5;
 
   return score;

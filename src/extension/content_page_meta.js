@@ -476,6 +476,7 @@
       if (u.includes("/api/")) score -= 100;
       if (u.includes("transcript")) score -= 100;
       if (u.includes("json") || u.includes("graphql")) score -= 100;
+      if (u.match(/(?:^|[\/._-])(?:subtitles?|captions?|cc)(?:[\/._-]|$)/)) score -= 500;
 
       if (u.match(/[/_-]?(init|segment|frag|part|chunk)\d*\.(mp4|m4s|m4a|m4v|webm)(\?|$)/)) continue;
       if (u.endsWith("init.mp4") || u.includes("init.mp4?")) continue;
