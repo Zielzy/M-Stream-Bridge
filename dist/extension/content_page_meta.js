@@ -210,6 +210,7 @@
             u.includes("/playlist/") && (score += 20), u.includes("/manifest/") && (score += 20), 
             (u.includes(".mp4") || u.includes(".webm")) && (score += 20), u.includes("/api/") && (score -= 100), 
             u.includes("transcript") && (score -= 100), (u.includes("json") || u.includes("graphql")) && (score -= 100), 
+            u.match(/(?:^|[\/._-])(?:subtitles?|captions?|cc)(?:[\/._-]|$)/) && (score -= 500), 
             u.match(/[/_-]?(init|segment|frag|part|chunk)\d*\.(mp4|m4s|m4a|m4v|webm)(\?|$)/) || (u.endsWith("init.mp4") || u.includes("init.mp4?") || u.includes("initialization") || u.includes("init-stream") || u.match(/\/(video|audio)_init/) || score >= bestScore && (bestScore = score, 
             best = candidate));
         }

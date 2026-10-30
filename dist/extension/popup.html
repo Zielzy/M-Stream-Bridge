@@ -66,6 +66,7 @@
       border-bottom: 1px solid var(--border);
       padding: 10px 12px;
       position: relative;
+      user-select: none;
     }
 
     .tb-left {
@@ -134,6 +135,14 @@
       font-weight: 500;
       font-family: var(--mono);
       color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s ease;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .tb-watermark:hover {
+      color: var(--primary);
     }
 
     .tb-right {
@@ -397,7 +406,7 @@
       <div class="tb-center">
         <div class="tb-brand">
           <span class="tb-name">M-Stream Bridge</span>
-          <span class="tb-watermark">by Zielzy</span>
+          <a href="https://github.com/Zielzy/M-Stream-Bridge" target="_blank" class="tb-watermark">by Zielzy</a>
         </div>
       </div>
       <div class="tb-right">

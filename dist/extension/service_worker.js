@@ -53,9 +53,9 @@ function isSubtitleLikeUrl(url) {
     if (!value) return !1;
     try {
         const parsed = new URL(value), path = parsed.pathname.toLowerCase(), query = parsed.search.toLowerCase();
-        return /\/(?:subtitles?|captions?|cc)(?:\/|$)/i.test(path) || /(?:^|[_\-.])sub(?:[_\-.]|$)/i.test(path) || /(?:^|[_\-.])(?:eng|jpn|japanese|ja)(?:[_\-.]sub|[_\-.]cc)/i.test(path) || /\.(?:srt|vtt|ass|ssa)(?:$|[?#])/i.test(value) || /(?:^|[?&])(?:subtitle|caption|sub|cc)=/i.test(query);
+        return /(?:^|[\/._-])(?:subtitles?|captions?|cc)(?:[\/._-]|$)/i.test(path) || /(?:^|[\/._-])(?:eng|jpn|japanese|ja)(?:[_\-.](?:sub|subs|cc|caption)|[\/._-]|$)/i.test(path) || /\.(?:srt|vtt|ass|ssa)(?:$|[?#])/i.test(value) || /(?:^|[?&])(?:subtitle|caption|sub|cc)=/i.test(query);
     } catch (_err) {
-        return /\/(?:subtitles?|captions?|cc)(?:\/|$)/i.test(value) || /\.(?:srt|vtt|ass|ssa)(?:$|[?#])/i.test(value);
+        return /(?:^|[\/._-])(?:subtitles?|captions?|cc)(?:[\/._-]|$)/i.test(value) || /\.(?:srt|vtt|ass|ssa)(?:$|[?#])/i.test(value);
     }
 }
 
@@ -88,7 +88,7 @@ function isSegmentLikeUrl(url) {
 
 function isPrimaryHlsUrl(url) {
     const lowered = String(url || "").toLowerCase(), hasM3u8 = lowered.includes(".m3u8"), hasHlsPath = /(\/hls\d*\/|\/playlist\/|\/manifest\/|\/rendition\/|\/dash\/)/i.test(lowered);
-    return !(!hasM3u8 && !hasHlsPath) && (!isLikelyAudioHlsUrl(lowered) && (!/(seg-\d+|chunk|fragment)/i.test(lowered) && (!hasM3u8 || !/(encryption\.key|\/key\.|\.ts(\?|&|$)|\.m4s(\?|&|$)|\.jpg(\?|&|$)|\.html(\?|&|$))/i.test(lowered))));
+    return !(!hasM3u8 && !hasHlsPath) && (!isLikelyAudioHlsUrl(lowered) && (!isSubtitleLikeUrl(lowered) && (!/(seg-\d+|chunk|fragment)/i.test(lowered) && (!hasM3u8 || !/(encryption\.key|\/key\.|\.ts(\?|&|$)|\.m4s(\?|&|$)|\.jpg(\?|&|$)|\.html(\?|&|$))/i.test(lowered)))));
 }
 
 function isHlsMasterUrl(url) {
@@ -413,8 +413,8 @@ function scoreStream(url, streamType) {
     u.match(/1080p?|2160p?|4k/) && (score += 200), u.match(/720p?/) && (score += 180), 
     u.match(/\/video\/|\/stream\//) && (score += 15), u.match(/\/ep(?:isode)?[\/_-]?\d/) && (score += 25), 
     u.match(/seg-\d|chunk|fragment/) && (score -= 30), u.match(/(^|[\/_-])audio[\/_-\d]/) && (score -= 40), 
-    u.match(/preview|thumb|low|tiny/) && (score -= 20), "direct" !== streamType || u.match(/audio/) || (score += 5), 
-    score;
+    u.match(/preview|thumb|low|tiny/) && (score -= 20), isSubtitleLikeUrl(u) && (score -= 500), 
+    "direct" !== streamType || u.match(/audio/) || (score += 5), score;
 }
 
 function rememberTabPrimaryCandidate(details, payload, streamType) {

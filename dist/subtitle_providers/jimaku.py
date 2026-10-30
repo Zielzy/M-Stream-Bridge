@@ -24,10 +24,17 @@ from utils.title_parser import SITES_RE, clean_media_title
 LOGGER = logging.getLogger('mstream_bridge')
 
 def _is_subtitle_like_url(url: Any) -> bool:
-    value = str(url or '').strip().lower()
+    value = str(url or '').strip()
     if not value:
         return False
-    return bool(re.search('/(?:subtitles?|captions?|cc)(?:/|$)|(?:^|[_\\-.])sub(?:[_\\-.]|$)|(?:^|[_\\-.])(?:eng|jpn|japanese|ja)(?:[_\\-.]sub|[_\\-.]cc)|\\.(?:srt|vtt|ass|ssa)(?:$|[?#])|(?:^|[?&])(?:subtitle|caption|sub|cc)=', value))
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(value)
+        path = parsed.path.lower()
+        query = parsed.query.lower()
+        return bool(re.search('(?:^|[/._-])(?:subtitles?|captions?|cc)(?:[/._-]|$)', path) or re.search('(?:^|[/._-])(?:eng|jpn|japanese|ja)(?:[_\\-.](?:sub|subs|cc|caption)|[/._-]|$)', path) or re.search('\\.(?:srt|vtt|ass|ssa)(?:$|[?#])', value, re.IGNORECASE) or re.search('(?:^|[?&])(?:subtitle|caption|sub|cc)=', query))
+    except Exception:
+        return bool(re.search('(?:^|[/._-])(?:subtitles?|captions?|cc)(?:[/._-]|$)', value, re.IGNORECASE) or re.search('\\.(?:srt|vtt|ass|ssa)(?:$|[?#])', value, re.IGNORECASE))
 
 def _stream_key(title: Any, stream_url: Any) -> str:
     normalized_title = re.sub('\\s+', ' ', str(title or '')).strip()
