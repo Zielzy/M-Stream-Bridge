@@ -69,7 +69,16 @@ M-Stream Bridge coordinates three main layers to bridge browser media into Migak
 4. Click Load unpacked.
 5. Select the `extension` folder from this release.
 6. Pin the `extension`.
-7. Run `M-Stream Bridge.exe`.
+7. Start the server:
+   - **Windows:** Run `M-Stream Bridge.exe`.
+   - **macOS / Linux (CLI):**
+     1. Install `ffmpeg` (e.g., `brew install ffmpeg` on macOS or `sudo apt install ffmpeg` on Linux).
+     2. Install dependencies & run:
+        ```bash
+        pip install -r requirements.txt
+        python3 src/main.py
+        ```
+     *(macOS Note: If port 7000 is occupied, turn off AirPlay Receiver in System Settings → General → AirDrop & Handoff).*
 8. When the dashboard opens, save your Jimaku or Subdl API keys and configure your preferred subtitle languages for automatic subtitle lookup.
 
 ### Step #2 - Snippets
@@ -110,15 +119,13 @@ To enable automatic subtitle fetching, you need to provide API keys for the supp
 
 ## Normal Use
 
-1. Start the server with `M-Stream Bridge.exe`.
+1. Start the server (`M-Stream Bridge.exe` on Windows, or `python3 src/main.py` on macOS/Linux).
 2. Open a supported non-DRM video page.
 3. Let the video play for about 5–10 seconds.
 4. Open the extension popup and click **Open Migaku Player**.
 5. Run the `migaku-player-snippet` snippet in Migaku Player.
-6. Start playback:
-   - Click **Proxy** to bypass server protections using the local bridge (recommended), or **Direct** if you don't need proxying.
-   - If playback fails or starts without audio, try clicking **Proxy** again or switch to **Direct**. If neither works, the stream is likely protected by strict DRM.
-7. Click **Subtitle** to automatically fetch and inject subtitles from your configured providers.
+6. Click **Play** to start streaming into Migaku Player.
+7. Click **Subtitle** to automatically fetch and inject subtitles.
 8. If you switch to a different video source, click **Exit Video** in Migaku Player before playing again.
 
 ### How to Run the `migaku-player-snippet`
@@ -126,9 +133,9 @@ To enable automatic subtitle fetching, you need to provide API keys for the supp
 Run this whenever Migaku Player needs the bridge UI again:
 
 1. Open Migaku Player.
-2. Press `F12`.
-3. Press `Ctrl+P`.
-4. Type `!`.
+2. Open DevTools (`F12`).
+3. Open Command Menu / File Search (`Ctrl+P` or `Cmd+P` on macOS).
+4. Type `!` (Run Snippet mode).
 5. Select `migaku-player-snippet`.
 6. Press `Enter`.
 
@@ -139,4 +146,4 @@ Run this whenever Migaku Player needs the bridge UI again:
 If you find this project useful, you can support me on Ko-fi ☕
 
 ## Tips
-Use `CTRL + ALT + B` to toggle (show/hide) the `migaku-player-snippet` UI.
+Use `Ctrl+Alt+B` (or `Ctrl+Option+B` on macOS) to toggle (show/hide) the `migaku-player-snippet` UI.
