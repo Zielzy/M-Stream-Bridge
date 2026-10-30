@@ -73,10 +73,12 @@ M-Stream Bridge coordinates three main layers to bridge browser media into Migak
    - **Windows:** Run `M-Stream Bridge.exe`.
    - **macOS / Linux (CLI):**
      1. Install `ffmpeg` (e.g., `brew install ffmpeg` on macOS or `sudo apt install ffmpeg` on Linux).
-     2. Install dependencies & run:
+     2. Set up environment & run:
         ```bash
+        python3 -m venv venv
+        source venv/bin/activate
         pip install -r requirements.txt
-        python3 src/main.py
+        python src/main.py
         ```
      *(macOS Note: If port 7000 is occupied, turn off AirPlay Receiver in System Settings → General → AirDrop & Handoff).*
 8. When the dashboard opens, save your Jimaku or Subdl API keys and configure your preferred subtitle languages for automatic subtitle lookup.
@@ -119,7 +121,7 @@ To enable automatic subtitle fetching, you need to provide API keys for the supp
 
 ## Normal Use
 
-1. Start the server (`M-Stream Bridge.exe` on Windows, or `python3 src/main.py` on macOS/Linux).
+1. Start the server (`M-Stream Bridge.exe` on Windows, or `./venv/bin/python src/main.py` on macOS/Linux).
 2. Open a supported non-DRM video page.
 3. Let the video play for about 5–10 seconds.
 4. Open the extension popup and click **Open Migaku Player**.
