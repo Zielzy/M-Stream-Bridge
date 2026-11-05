@@ -29,7 +29,7 @@
   const POS_STORAGE_KEY = "__bridge_migaku_panel_pos__";
 
   // Bootstrap dummy video configuration
-  const DUMMY_DURATION_MS = 160;
+  const DUMMY_DURATION_MS = 1000;
   const DUMMY_AUDIO_GAIN = 0.0001;
   const AUTO_SYNC_INTERVAL_MS = 10000;
 
@@ -1185,9 +1185,10 @@
         try {
           clearInterval(drawTimer);
           const blob = new Blob(chunks, { type: "video/webm" });
-          const fileName = (latestStream && latestStream.title)
-            ? `${latestStream.title.replace(/[^a-zA-Z0-9_\-]/g, "_").replace(/_+/g, "_")}_Init.webm`
-            : "M_Stream_Init.webm";
+          const s = Number(latestStream?.season);
+          const ep = Number(latestStream?.episode);
+          const tag = s && ep ? ` - S${String(s).padStart(2, "0")}E${String(ep).padStart(2, "0")}` : ep ? ` - EP${String(ep).padStart(2, "0")}` : "";
+          const fileName = `${(latestStream?.clean_title || latestStream?.title || "Bridge_Media")}${tag}.webm`.replace(/[\\/:*?"<>|]/g, "").trim();
           const file = new File([blob], fileName, { type: "video/webm" });
           if (osc) {
             try {
@@ -1330,13 +1331,27 @@
         await new Promise((r) => requestAnimationFrame(r));
       }
 
+      // Allow Migaku's internal bootstrap verification (waitForInitialPlayback) to confirm dummy playback
+      if (video.classList && video.classList.contains("-hidden")) {
+        await new Promise((resolve) => {
+          let checks = 0;
+          const timer = setInterval(() => {
+            checks++;
+            if (!video.classList.contains("-hidden") || video.currentTime >= 0.1 || checks >= 15) {
+              clearInterval(timer);
+              resolve();
+            }
+          }, 100);
+        });
+      }
+
       if (!video._bridgePlayPatched) {
         const originalPlay = video.play;
         video.play = function () {
           const p = originalPlay.apply(this, arguments);
           if (p !== undefined && p.catch) {
             return p.catch((e) => {
-              if (e.name === "AbortError") {
+              if (e.name === "AbortError" || e.name === "NotSupportedError") {
                 return Promise.resolve();
               }
               throw e;
@@ -1438,8 +1453,6 @@
 
       if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()) {
         if (video.isFirstBootstrap) {
-          video.removeAttribute("src");
-          await new Promise((r) => requestAnimationFrame(r));
           await new Promise((r) => requestAnimationFrame(r));
           video.isFirstBootstrap = false;
         }

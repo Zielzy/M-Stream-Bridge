@@ -217,7 +217,7 @@ async function useManualSubtitle(id, sub_filename = null) {
         }
         if ("needs_selection" === d.status) return void setManualFeedback("Please select a specific episode.", "warn");
         setManualFeedback("subtitle selected: " + (d.filename || "subtitle.srt"), "ok"), 
-        toast("Manual subtitle selected."), await Promise.all([ fetchStream(), fetchLogs() ]);
+        toast("Manual subtitle selected"), await Promise.all([ fetchStream(), fetchLogs() ]);
     } catch (e) {
         setManualFeedback("use failed: " + e.message, "err");
     }
@@ -386,7 +386,7 @@ async function useCandidate(id) {
             cache: "no-store"
         }), d = await r.json();
         if (!r.ok) throw new Error(d.message || "HTTP " + r.status);
-        toast("Stream restored."), await Promise.all([ fetchStream(), fetchCandidates() ]);
+        toast("Stream restored"), await Promise.all([ fetchStream(), fetchCandidates() ]);
     } catch (e) {
         toast("Use failed: " + e.message);
     }
@@ -397,7 +397,7 @@ async function clearCandidates() {
         await fetch(BRIDGE + "/api/clear-candidates", {
             method: "POST",
             cache: "no-store"
-        }), renderCandidates([]), toast("Captured streams cleared.");
+        }), renderCandidates([]), toast("Captured streams cleared");
     } catch {}
 }
 
@@ -527,7 +527,7 @@ async function saveKey() {
     } catch (e) {
         setFeedback("failed: " + e.message, "err");
     } finally {
-        btn && (btn.disabled = !1, btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Save & Restart Server');
+        btn && (btn.disabled = !1, btn.innerHTML = "Save & Restart Server");
     }
 }
 
@@ -588,7 +588,7 @@ shutdownCancel && shutdownModal && shutdownCancel.addEventListener("click", () =
         });
     } catch {}
     await fetchLogs(), setTimeout(async () => {
-        await checkServer(), toast("Server stopped.");
+        await checkServer(), toast("Server stopped");
     }, 800);
 }), btnShutdown && shutdownModal && btnShutdown.addEventListener("click", () => {
     shutdownModal.style.display = "flex";

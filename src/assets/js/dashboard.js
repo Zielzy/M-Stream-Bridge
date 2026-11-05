@@ -511,7 +511,7 @@ async function useManualSubtitle(id, sub_filename = null) {
     }
 
     setManualFeedback("subtitle selected: " + (d.filename || "subtitle.srt"), "ok");
-    toast("Manual subtitle selected.");
+    toast("Manual subtitle selected");
     await Promise.all([fetchStream(), fetchLogs()]);
   } catch (e) {
     setManualFeedback("use failed: " + e.message, "err");
@@ -791,7 +791,7 @@ async function useCandidate(id) {
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.message || "HTTP " + r.status);
-    toast("Stream restored.");
+    toast("Stream restored");
     await Promise.all([fetchStream(), fetchCandidates()]);
   } catch (e) {
     toast("Use failed: " + e.message);
@@ -805,7 +805,7 @@ async function clearCandidates() {
   try {
     await fetch(BRIDGE + "/api/clear-candidates", { method: "POST", cache: "no-store" });
     renderCandidates([]);
-    toast("Captured streams cleared.");
+    toast("Captured streams cleared");
   } catch { }
 }
 
@@ -1093,7 +1093,7 @@ async function saveKey() {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Save & Restart Server`;
+      btn.innerHTML = "Save & Restart Server";
     }
   }
 }
@@ -1128,7 +1128,7 @@ if (shutdownConfirm && shutdownModal) {
     await fetchLogs();
     setTimeout(async () => {
       await checkServer();
-      toast("Server stopped.");
+      toast("Server stopped");
     }, 800);
   });
 }

@@ -143,12 +143,16 @@ class HlsProxyMixin:
         if not variants:
             return text
 
-        def get_score(v_text: str) -> tuple[int, int]:
+        def get_score(v_text: str) -> tuple[int, int, int]:
+            codec_match = re.search('CODECS="([^"]+)"', v_text, re.IGNORECASE)
+            codecs = codec_match.group(1).lower() if codec_match else ''
+            is_hevc = any((c in codecs for c in ('hvc1', 'hev1', 'dvh1')))
+            codec_tier = 0 if is_hevc else 1
             bw_match = re.search('BANDWIDTH=(\\d+)', v_text)
             bw = int(bw_match.group(1)) if bw_match else 0
             res_match = re.search('RESOLUTION=(\\d+)x(\\d+)', v_text)
             res = int(res_match.group(1)) * int(res_match.group(2)) if res_match else 0
-            return (res, bw)
+            return (codec_tier, res, bw)
         variants.sort(key=get_score, reverse=True)
         return '\n'.join(header_lines) + '\n' + '\n'.join(variants) + '\n'
 
@@ -575,6 +579,8 @@ class HlsProxyMixin:
                         content_type = guessed
                     else:
                         content_type = 'video/MP2T'
+            elif any((box in data[:16] for box in (b'ftyp', b'styp', b'moof'))):
+                content_type = 'video/mp4'
             self.send_response(200)
             self._send_cors_headers()
             self.send_header('Content-Type', content_type)
