@@ -1,12 +1,12 @@
 # ==M-Stream Bridge==
 # @name        M-Stream Bridge
-# @version     3.1.0
+# @version     3.1.1
 # @author      Zielzy
 # @description Local bridge for non-DRM browser streams and Migaku Player.
 # @homepage    https://github.com/Zielzy/M-Stream-Bridge
 # ==/M-Stream Bridge==
 from __future__ import annotations
-BRIDGE_VERSION = '3.1.0'
+BRIDGE_VERSION = '3.1.1'
 import datetime
 import hashlib
 import http.server
@@ -1659,7 +1659,7 @@ def run_server() -> None:
         return
     print()
     print('=' * 72)
-    print('M-Stream Bridge v3.1.0')
+    print('M-Stream Bridge v3.1.1')
     print('=' * 72)
     try:
         from core.config import get_tmdb_endpoint
