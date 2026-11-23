@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- ==M-Stream Bridge==
      @name        M-Stream Bridge
-     @version     3.1.1
+     @version     3.2.0
      @author      Zielzy
      @description Local bridge for non-DRM browser streams and Migaku Player.
      @homepage    https://github.com/Zielzy/M-Stream-Bridge
@@ -10,7 +10,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>M-Stream Bridge v3.1.1</title>
+  <title>M-Stream Bridge v3.2.0</title>
   <style>
     * {
       box-sizing: border-box;
@@ -72,7 +72,59 @@
     .tb-left {
       display: inline-flex;
       align-items: center;
+      gap: 6px;
       z-index: 1;
+    }
+
+    
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 26px;
+      height: 14px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+      transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: inset 1px 1px 3px var(--shadow-dark), inset -1px -1px 3px var(--shadow-light);
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 10px;
+      width: 10px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.25);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: var(--primary);
+    }
+
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(12px);
     }
 
     
@@ -96,6 +148,10 @@
 
     .server-badge.offline {
       color: #ef4444;
+    }
+
+    .server-badge.paused {
+      color: #64748b;
     }
 
     
@@ -160,6 +216,136 @@
       font-weight: 600;
       letter-spacing: 0.04em;
       white-space: nowrap;
+    }
+
+    
+    .tb-gear-btn {
+      background: none;
+      border: none;
+      padding: 3px;
+      margin-left: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: color 0.15s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .tb-gear-btn:hover {
+      color: var(--primary);
+      transform: rotate(30deg);
+    }
+
+    .tb-gear-btn.active {
+      color: var(--primary);
+      background: var(--primary-bg);
+      transform: rotate(45deg);
+    }
+
+    .tb-gear-btn:active {
+      transform: rotate(30deg) scale(0.92);
+    }
+
+    
+    .view-panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .view-panel.hidden {
+      display: none !important;
+    }
+
+    
+    .settings-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .settings-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .settings-label {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--text-main);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .settings-desc {
+      font-size: 9.5px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      line-height: 1.35;
+    }
+
+    .edition-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .edition-card {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 9px 11px;
+      cursor: pointer;
+      box-shadow: inset 1px 1px 3px var(--shadow-dark), inset -1px -1px 3px var(--shadow-light);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+    }
+
+    .edition-card:hover {
+      border-color: rgba(75, 0, 178, 0.25);
+    }
+
+    .edition-card input[type="radio"] {
+      accent-color: var(--primary);
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    .edition-card.active, .edition-card:has(input[type="radio"]:checked) {
+      border-color: var(--primary);
+      background: var(--primary-bg);
+      box-shadow: 2px 2px 6px var(--shadow-dark), -2px -2px 6px var(--shadow-light);
+    }
+
+    .edition-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .edition-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .edition-id {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+      user-select: text;
     }
 
     
@@ -401,7 +587,10 @@
     
     <div class="titlebar">
       <div class="tb-left">
-        <span id="server-badge" class="server-badge offline">OFFLINE</span>
+        <label class="toggle-switch" title="Toggle Bridge Interceptor (ON/OFF)">
+          <input type="checkbox" id="toggle-bridge" checked />
+          <span class="toggle-slider"></span>
+        </label>
       </div>
       <div class="tb-center">
         <div class="tb-brand">
@@ -410,7 +599,13 @@
         </div>
       </div>
       <div class="tb-right">
-        <span class="tb-ver">v3.1.1</span>
+        <span class="tb-ver">v3.2.0</span>
+        <button id="btn-toggle-settings" class="tb-gear-btn" title="Migaku Player Settings" aria-label="Settings">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
       </div>
     </div>
     
@@ -422,26 +617,66 @@
     
     <div class="body">
       
-      <div class="stream-box">
-        <div class="pill-row">
-          <div id="stream-pill" class="pill hls" style="display:none">HLS</div>
-          <div id="stream-season" class="pill season" style="display:none">S01</div>
-          <div id="stream-episode" class="pill episode" style="display:none">EP01</div>
+      <div id="view-main" class="view-panel">
+        
+        <div class="stream-box">
+          <div class="pill-row">
+            <div id="stream-pill" class="pill hls" style="display:none">HLS</div>
+            <div id="stream-season" class="pill season" style="display:none">S01</div>
+            <div id="stream-episode" class="pill episode" style="display:none">EP01</div>
+          </div>
+          <div class="label">stream active</div>
+          <div id="stream-title" class="title">No stream yet</div>
+          <div id="stream-url" class="url">-</div>
         </div>
-        <div class="label">stream active</div>
-        <div id="stream-title" class="title">No stream yet</div>
-        <div id="stream-url" class="url">-</div>
+
+        
+        <div class="row">
+          <button id="btn-open-migaku" class="b-migaku"><span>Open Migaku Player</span></button>
+        </div>
+
+        
+        <div id="status" class="status">
+          <span class="status-dot bad"></span>
+          <span class="status-text">Initializing connection...</span>
+        </div>
       </div>
 
       
-      <div class="row">
-        <button id="btn-open-migaku" class="b-migaku"><span>Open Migaku Player</span></button>
-      </div>
+      <div id="view-settings" class="view-panel hidden">
+        <div class="settings-section" style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border);">
+          <div class="settings-title-row">
+            <div class="settings-label">Media Interception</div>
+            <label class="toggle-switch" title="Toggle Bridge Interceptor (ON/OFF)">
+              <input type="checkbox" id="toggle-bridge-settings" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-desc">Turn off to completely pause all media interception and background hooks.</div>
+        </div>
 
-      
-      <div id="status" class="status">
-        <span class="status-dot bad"></span>
-        <span class="status-text">Initializing connection...</span>
+        <div class="settings-section">
+          <div class="settings-label">Migaku Edition</div>
+          <div class="settings-desc">Select the Migaku version installed in your browser:</div>
+
+          <div class="edition-cards">
+            <label class="edition-card" for="edition-early-access">
+              <input type="radio" id="edition-early-access" name="migaku-edition" value="dmeppfcidcpcocleneopiblmpnbokhep" checked />
+              <div class="edition-content">
+                <div class="edition-name">Migaku: Early Access</div>
+                <div class="edition-id">dmeppfcidcpcocleneopiblmpnbokhep</div>
+              </div>
+            </label>
+
+            <label class="edition-card" for="edition-standard">
+              <input type="radio" id="edition-standard" name="migaku-edition" value="lkhiljgmbeecmljiogckofcalncmfnfo" />
+              <div class="edition-content">
+                <div class="edition-name">Migaku: Standard</div>
+                <div class="edition-id">lkhiljgmbeecmljiogckofcalncmfnfo</div>
+              </div>
+            </label>
+          </div>
+        </div>
       </div>
     </div>
   </div>

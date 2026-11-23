@@ -26,6 +26,33 @@
   let lastSentKey = "";
   let mutationSyncTimer = null;
   let spaFollowupTimers = [];
+  let bridgeEnabled = true;
+
+  function setBridgeEnabled(enabled) {
+    bridgeEnabled = Boolean(enabled);
+    try {
+      window.postMessage({
+        source: "__MSTREAM_CTRL__",
+        type: "SET_ENABLED",
+        enabled: bridgeEnabled,
+      }, "*");
+    } catch (_err) { }
+    if (!bridgeEnabled && typeof mstreamBtnRoot !== "undefined" && mstreamBtnRoot && mstreamBtnRoot.parentElement) {
+      mstreamBtnRoot.remove();
+      mstreamBtnRoot = null;
+    }
+  }
+
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get({ bridgeEnabled: true }, (res) => {
+      setBridgeEnabled(res?.bridgeEnabled !== false);
+    });
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === "local" && changes.bridgeEnabled) {
+        setBridgeEnabled(changes.bridgeEnabled.newValue !== false);
+      }
+    });
+  }
 
   /**
    * Schedules metadata transmission after DOM mutations settle.
@@ -346,6 +373,7 @@
    * @param {boolean} force - Force delivery flag.
    */
   function sendMeta(force) {
+    if (!bridgeEnabled) return;
     const meta = buildMeta();
     const key = JSON.stringify([
       meta.page_url,
@@ -449,7 +477,7 @@
    * Evaluates buffered stream candidate URLs and sends the highest-scoring candidate.
    */
   function sendBestStreamCandidate() {
-    if (!window.__MSTREAM_CAPTURED.length) return;
+    if (!bridgeEnabled || !window.__MSTREAM_CAPTURED.length) return;
 
     let best = window.__MSTREAM_CAPTURED[window.__MSTREAM_CAPTURED.length - 1];
     let bestScore = -100;
@@ -734,6 +762,7 @@
    * Displays the floating capture button on active video player.
    */
   function showHookButton() {
+    if (!bridgeEnabled) return;
     initUI();
     const video = findActiveVideo();
     if (video) {

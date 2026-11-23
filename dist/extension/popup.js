@@ -1,13 +1,22 @@
 // ==M-Stream Bridge==
 // @name        M-Stream Bridge
-// @version     3.1.1
+// @version     3.2.0
 // @author      Zielzy
 // @description Local bridge for non-DRM browser streams and Migaku Player.
 // @homepage    https://github.com/Zielzy/M-Stream-Bridge
 // ==/M-Stream Bridge==
 
 
-const BRIDGE_ORIGIN = "http://127.0.0.1:7000", DEFAULT_MIGAKU_EXTENSION_ID = "dmeppfcidcpcocleneopiblmpnbokhep", MIGAKU_PLAYER_PATH = "/pages/player/index.html", HEALTH_RETRY_COUNT = 3, HEALTH_RETRY_DELAY_MS = 350, RECENT_ONLINE_GRACE_MS = 2500;
+const BRIDGE_ORIGIN = "http://127.0.0.1:7000", MIGAKU_EDITIONS = {
+    EARLY_ACCESS: {
+        id: "dmeppfcidcpcocleneopiblmpnbokhep",
+        label: "Migaku: Early Access"
+    },
+    STANDARD: {
+        id: "lkhiljgmbeecmljiogckofcalncmfnfo",
+        label: "Migaku: Standard"
+    }
+}, DEFAULT_MIGAKU_EXTENSION_ID = MIGAKU_EDITIONS.EARLY_ACCESS.id, MIGAKU_PLAYER_PATH = "/pages/player/index.html", HEALTH_RETRY_COUNT = 3, HEALTH_RETRY_DELAY_MS = 350, RECENT_ONLINE_GRACE_MS = 2500;
 
 let latestState = null, toastTimer = null, lastServerOnlineAt = 0;
 
@@ -22,7 +31,14 @@ const el = {
     serverDot: document.getElementById("server-dot"),
     serverLine: document.getElementById("server-line"),
     serverBadge: document.getElementById("server-badge"),
-    toast: document.getElementById("toast")
+    toast: document.getElementById("toast"),
+    viewMain: document.getElementById("view-main"),
+    viewSettings: document.getElementById("view-settings"),
+    btnToggleSettings: document.getElementById("btn-toggle-settings"),
+    btnSettingsBack: document.getElementById("btn-settings-back"),
+    editionRadios: document.querySelectorAll('input[name="migaku-edition"]'),
+    toggleBridge: document.getElementById("toggle-bridge"),
+    toggleBridgeSettings: document.getElementById("toggle-bridge-settings")
 };
 
 function showToast(message) {
@@ -162,6 +178,13 @@ async function openMigakuPlayerDirect() {
 
 async function refreshState() {
     try {
+        const stored = await chromeCallback(done => chrome.storage.local.get({
+            bridgeEnabled: !0
+        }, done));
+        if (!1 === stored?.bridgeEnabled) return el.serverBadge && (el.serverBadge.textContent = "PAUSED", 
+        el.serverBadge.className = "server-badge paused"), latestState = null, renderSeasonEpisode(null, null), 
+        el.pill && (el.pill.style.display = "none"), el.title && (el.title.textContent = "Bridge Paused"), 
+        el.url && (el.url.textContent = "Interception turned off"), void setStatus(!1, "Bridge paused. Turn toggle ON to resume.");
         setStatus(!0, "Verifying bridge connection..."), await fetchJsonWithRetry(`${BRIDGE_ORIGIN}/health`), 
         lastServerOnlineAt = Date.now(), setServerIndicator(!0);
         const data = await fetchJsonWithRetry(`${BRIDGE_ORIGIN}/api/current-stream`, 2), hasStream = Boolean(data?.has_stream);
@@ -189,6 +212,59 @@ async function openMigakuPlayer() {
     throw new Error(resp?.error || "Failed to open Migaku");
 }
 
+let currentView = "main";
+
+function showView(viewName) {
+    currentView = viewName, "settings" === viewName ? (el.viewMain?.classList.add("hidden"), 
+    el.viewSettings?.classList.remove("hidden"), el.btnToggleSettings?.classList.add("active")) : (el.viewSettings?.classList.add("hidden"), 
+    el.viewMain?.classList.remove("hidden"), el.btnToggleSettings?.classList.remove("active"));
+}
+
+async function initMasterToggle() {
+    const stored = await chromeCallback(done => chrome.storage.local.get({
+        bridgeEnabled: !0
+    }, done)), updateToggleUI = enabled => {
+        el.toggleBridge && (el.toggleBridge.checked = enabled), el.toggleBridgeSettings && (el.toggleBridgeSettings.checked = enabled), 
+        enabled || (el.serverBadge && (el.serverBadge.textContent = "PAUSED", el.serverBadge.className = "server-badge paused"), 
+        latestState = null, renderSeasonEpisode(null, null), el.pill && (el.pill.style.display = "none"), 
+        el.title && (el.title.textContent = "Bridge Paused"), el.url && (el.url.textContent = "Interception turned off"), 
+        setStatus(!1, "Bridge paused. Turn toggle ON to resume."));
+    };
+    updateToggleUI(!1 !== stored?.bridgeEnabled);
+    const onToggleChange = async e => {
+        const enabled = Boolean(e.target.checked);
+        updateToggleUI(enabled);
+        try {
+            await chromeCallback(done => chrome.storage.local.set({
+                bridgeEnabled: enabled
+            }, done)), showToast(enabled ? "Bridge Enabled" : "Bridge Paused");
+        } catch (_err) {
+            showToast("Failed to save toggle state");
+        }
+        enabled && refreshState();
+    };
+    el.toggleBridge?.addEventListener("change", onToggleChange), el.toggleBridgeSettings?.addEventListener("change", onToggleChange);
+}
+
+async function initSettingsView() {
+    const currentId = await loadMigakuExtensionId();
+    el.editionRadios && el.editionRadios.length && el.editionRadios.forEach(radio => {
+        radio.checked = radio.value === currentId, radio.addEventListener("change", async e => {
+            if (!e.target.checked) return;
+            const selectedId = e.target.value, editionLabel = selectedId === MIGAKU_EDITIONS.STANDARD.id ? MIGAKU_EDITIONS.STANDARD.label : MIGAKU_EDITIONS.EARLY_ACCESS.label;
+            try {
+                await chromeCallback(done => chrome.storage.local.set({
+                    migakuExtensionId: selectedId
+                }, done)), showToast(`Saved: ${editionLabel}`);
+            } catch (_err) {
+                showToast("Failed to save setting");
+            }
+        });
+    }), el.btnToggleSettings?.addEventListener("click", () => {
+        showView("settings" === currentView ? "main" : "settings");
+    });
+}
+
 el.openMigaku && el.openMigaku.addEventListener("click", async () => {
     try {
         await openMigakuPlayer();
@@ -214,7 +290,7 @@ function isNewerVersion(candidate, current) {
 
 async function checkExtensionUpdate() {
     try {
-        const manifest = chrome.runtime.getManifest ? chrome.runtime.getManifest() : null, currentVersion = manifest?.version || "3.1.1", cached = await chrome.storage.local.get([ "upstreamVersion", "downloadUrl", "lastUpdateCheck" ]), now = Date.now();
+        const manifest = chrome.runtime.getManifest ? chrome.runtime.getManifest() : null, currentVersion = manifest?.version || "3.2.0", cached = await chrome.storage.local.get([ "upstreamVersion", "downloadUrl", "lastUpdateCheck" ]), now = Date.now();
         let version = cached?.upstreamVersion, downloadUrl = cached?.downloadUrl || "https://github.com/Zielzy/M-Stream-Bridge/releases/latest";
         if (!version || now - (cached?.lastUpdateCheck || 0) > 432e5) {
             const resp = await fetch("https://raw.githubusercontent.com/Zielzy/M-Stream-Bridge/main/index.min.json", {
@@ -242,4 +318,4 @@ async function checkExtensionUpdate() {
     } catch (_e) {}
 }
 
-refreshState(), checkExtensionUpdate();
+initMasterToggle(), refreshState(), initSettingsView(), checkExtensionUpdate();

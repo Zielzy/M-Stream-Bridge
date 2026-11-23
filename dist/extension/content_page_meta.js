@@ -1,6 +1,6 @@
 // ==M-Stream Bridge==
 // @name        M-Stream Bridge
-// @version     3.1.1
+// @version     3.2.0
 // @author      Zielzy
 // @description Local bridge for non-DRM browser streams and Migaku Player.
 // @homepage    https://github.com/Zielzy/M-Stream-Bridge
@@ -10,7 +10,19 @@
 !function() {
     "use strict";
     const {parseEpisodeFromText: parseEpisodeFromText, parseSeasonFromText: parseSeasonFromText} = globalThis.BridgeUtils, ALLOWED_JSON_LD_TYPES = new Set([ "Movie", "TVSeries", "VideoObject", "Episode", "CreativeWork", "AnimeSeries", "AnimeEpisode" ]);
-    let lastSentKey = "", mutationSyncTimer = null, spaFollowupTimers = [];
+    let lastSentKey = "", mutationSyncTimer = null, spaFollowupTimers = [], bridgeEnabled = !0;
+    function setBridgeEnabled(enabled) {
+        bridgeEnabled = Boolean(enabled);
+        try {
+            window.postMessage({
+                source: "__MSTREAM_CTRL__",
+                type: "SET_ENABLED",
+                enabled: bridgeEnabled
+            }, "*");
+        } catch (_err) {}
+        !bridgeEnabled && void 0 !== mstreamBtnRoot && mstreamBtnRoot && mstreamBtnRoot.parentElement && (mstreamBtnRoot.remove(), 
+        mstreamBtnRoot = null);
+    }
     function scheduleMeta(force, delayMs = 220) {
         mutationSyncTimer && clearTimeout(mutationSyncTimer), mutationSyncTimer = setTimeout(() => {
             mutationSyncTimer = null, sendMeta(force);
@@ -19,6 +31,13 @@
     function cleanTitleCandidate(text) {
         return String(text || "").replace(/\s+/g, " ").trim();
     }
+    "undefined" != typeof chrome && chrome.storage && chrome.storage.local && (chrome.storage.local.get({
+        bridgeEnabled: !0
+    }, res => {
+        setBridgeEnabled(!1 !== res?.bridgeEnabled);
+    }), chrome.storage.onChanged.addListener((changes, area) => {
+        "local" === area && changes.bridgeEnabled && setBridgeEnabled(!1 !== changes.bridgeEnabled.newValue);
+    }));
     const STANDALONE_NOISE_RE = /^(?:comments?|discussions?|(?:ep|episode)\.?\s*\d+)$/i;
     function buildMeta() {
         const pageUrl = location.href || "", title = document.title || "", {kind: pageKind, reason: pageReason} = function() {
@@ -170,6 +189,7 @@
         };
     }
     function sendMeta(force) {
+        if (!bridgeEnabled) return;
         const meta = buildMeta(), key = JSON.stringify([ meta.page_url, meta.episode, meta.season, meta.title, meta.title_candidates, meta.has_video, meta.video_count ]);
         if (force || key !== lastSentKey) {
             lastSentKey = key;
@@ -197,7 +217,7 @@
     }), window.__MSTREAM_CAPTURED = [];
     let streamSendTimer = null;
     function sendBestStreamCandidate() {
-        if (!window.__MSTREAM_CAPTURED.length) return;
+        if (!bridgeEnabled || !window.__MSTREAM_CAPTURED.length) return;
         let best = window.__MSTREAM_CAPTURED[window.__MSTREAM_CAPTURED.length - 1], bestScore = -100;
         for (let i = window.__MSTREAM_CAPTURED.length - 1; i >= 0; i--) {
             const candidate = window.__MSTREAM_CAPTURED[i];
@@ -289,6 +309,7 @@
         }), intObs.observe(video));
     }
     function showHookButton() {
+        if (!bridgeEnabled) return;
         !function() {
             if (window.__mstreamFloatingButton) return !0;
             window.__mstreamFloatingButton = !0, mstreamBtnRoot = document.createElement("div"), 

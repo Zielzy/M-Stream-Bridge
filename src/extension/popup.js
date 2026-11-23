@@ -20,7 +20,17 @@
 // ==========================================================================
 
 const BRIDGE_ORIGIN = "http://127.0.0.1:7000";
-const DEFAULT_MIGAKU_EXTENSION_ID = "dmeppfcidcpcocleneopiblmpnbokhep";
+const MIGAKU_EDITIONS = {
+  EARLY_ACCESS: {
+    id: "dmeppfcidcpcocleneopiblmpnbokhep",
+    label: "Migaku: Early Access",
+  },
+  STANDARD: {
+    id: "lkhiljgmbeecmljiogckofcalncmfnfo",
+    label: "Migaku: Standard",
+  },
+};
+const DEFAULT_MIGAKU_EXTENSION_ID = MIGAKU_EDITIONS.EARLY_ACCESS.id;
 const MIGAKU_PLAYER_PATH = "/pages/player/index.html";
 
 const HEALTH_RETRY_COUNT = 3;
@@ -47,6 +57,13 @@ const el = {
   serverLine: document.getElementById("server-line"),
   serverBadge: document.getElementById("server-badge"),
   toast: document.getElementById("toast"),
+  viewMain: document.getElementById("view-main"),
+  viewSettings: document.getElementById("view-settings"),
+  btnToggleSettings: document.getElementById("btn-toggle-settings"),
+  btnSettingsBack: document.getElementById("btn-settings-back"),
+  editionRadios: document.querySelectorAll('input[name="migaku-edition"]'),
+  toggleBridge: document.getElementById("toggle-bridge"),
+  toggleBridgeSettings: document.getElementById("toggle-bridge-settings"),
 };
 
 // ==========================================================================
@@ -314,6 +331,21 @@ async function openMigakuPlayerDirect() {
  */
 async function refreshState() {
   try {
+    const stored = await chromeCallback((done) => chrome.storage.local.get({ bridgeEnabled: true }, done));
+    if (stored?.bridgeEnabled === false) {
+      if (el.serverBadge) {
+        el.serverBadge.textContent = "PAUSED";
+        el.serverBadge.className = "server-badge paused";
+      }
+      latestState = null;
+      renderSeasonEpisode(null, null);
+      if (el.pill) el.pill.style.display = "none";
+      if (el.title) el.title.textContent = "Bridge Paused";
+      if (el.url) el.url.textContent = "Interception turned off";
+      setStatus(false, "Bridge paused. Turn toggle ON to resume.");
+      return;
+    }
+
     setStatus(true, "Verifying bridge connection...");
     await fetchJsonWithRetry(`${BRIDGE_ORIGIN}/health`);
     lastServerOnlineAt = Date.now();
@@ -372,6 +404,99 @@ async function openMigakuPlayer() {
 // ==========================================================================
 // 7. Lifecycle Initialization & Event Listeners
 // ==========================================================================
+
+let currentView = "main";
+
+/**
+ * Toggles visibility between popup view panels.
+ * @param {"main" | "settings"} viewName - Target view panel.
+ */
+function showView(viewName) {
+  currentView = viewName;
+  if (viewName === "settings") {
+    el.viewMain?.classList.add("hidden");
+    el.viewSettings?.classList.remove("hidden");
+    el.btnToggleSettings?.classList.add("active");
+  } else {
+    el.viewSettings?.classList.add("hidden");
+    el.viewMain?.classList.remove("hidden");
+    el.btnToggleSettings?.classList.remove("active");
+  }
+}
+
+/**
+ * Initializes the master interception switch (ON/OFF) and binds UI state.
+ */
+async function initMasterToggle() {
+  const stored = await chromeCallback((done) => chrome.storage.local.get({ bridgeEnabled: true }, done));
+  const isEnabled = stored?.bridgeEnabled !== false;
+
+  const updateToggleUI = (enabled) => {
+    if (el.toggleBridge) el.toggleBridge.checked = enabled;
+    if (el.toggleBridgeSettings) el.toggleBridgeSettings.checked = enabled;
+    if (!enabled) {
+      if (el.serverBadge) {
+        el.serverBadge.textContent = "PAUSED";
+        el.serverBadge.className = "server-badge paused";
+      }
+      latestState = null;
+      renderSeasonEpisode(null, null);
+      if (el.pill) el.pill.style.display = "none";
+      if (el.title) el.title.textContent = "Bridge Paused";
+      if (el.url) el.url.textContent = "Interception turned off";
+      setStatus(false, "Bridge paused. Turn toggle ON to resume.");
+    }
+  };
+
+  updateToggleUI(isEnabled);
+
+  const onToggleChange = async (e) => {
+    const enabled = Boolean(e.target.checked);
+    updateToggleUI(enabled);
+    try {
+      await chromeCallback((done) => chrome.storage.local.set({ bridgeEnabled: enabled }, done));
+      showToast(enabled ? "Bridge Enabled" : "Bridge Paused");
+    } catch (_err) {
+      showToast("Failed to save toggle state");
+    }
+    if (enabled) {
+      void refreshState();
+    }
+  };
+
+  el.toggleBridge?.addEventListener("change", onToggleChange);
+  el.toggleBridgeSettings?.addEventListener("change", onToggleChange);
+}
+
+/**
+ * Initializes settings view panel and Migaku edition radio handlers.
+ */
+async function initSettingsView() {
+  const currentId = await loadMigakuExtensionId();
+  if (el.editionRadios && el.editionRadios.length) {
+    el.editionRadios.forEach((radio) => {
+      radio.checked = radio.value === currentId;
+      radio.addEventListener("change", async (e) => {
+        if (!e.target.checked) return;
+        const selectedId = e.target.value;
+        const editionLabel = selectedId === MIGAKU_EDITIONS.STANDARD.id
+          ? MIGAKU_EDITIONS.STANDARD.label
+          : MIGAKU_EDITIONS.EARLY_ACCESS.label;
+
+        try {
+          await chromeCallback((done) => chrome.storage.local.set({ migakuExtensionId: selectedId }, done));
+          showToast(`Saved: ${editionLabel}`);
+        } catch (_err) {
+          showToast("Failed to save setting");
+        }
+      });
+    });
+  }
+
+  el.btnToggleSettings?.addEventListener("click", () => {
+    showView(currentView === "settings" ? "main" : "settings");
+  });
+}
 
 if (el.openMigaku) {
   el.openMigaku.addEventListener("click", async () => {
@@ -458,6 +583,8 @@ async function checkExtensionUpdate() {
   } catch (_e) { }
 }
 
+void initMasterToggle();
 void refreshState();
+void initSettingsView();
 void checkExtensionUpdate();
 

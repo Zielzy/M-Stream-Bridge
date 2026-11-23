@@ -98,7 +98,9 @@
    * @returns {boolean} True if URL points to a stream target (.m3u8).
    */
   function isTargetUrl(url) {
-    if (typeof url !== "string") return false;
+    if (typeof url !== "string" || !url) return false;
+    // Strictly require HTTP/HTTPS scheme - ignore data:, blob:, javascript:, about:, chrome:
+    if (!url.startsWith("http://") && !url.startsWith("https://")) return false;
     const u = url.toLowerCase();
 
     // Ignore static web assets and segment chunks
@@ -115,33 +117,31 @@
   if (FEATURES.FETCH) {
     const originalFetch = window.fetch;
 
-    async function hookedFetch(...args) {
+    function extractUrlAndMethod(args) {
       let url = "";
       let method = "GET";
-
       try {
-        if (args[0] instanceof Request) {
-          url = args[0].url;
-          method = args[0].method || "GET";
-        } else if (typeof args[0] === "string" || args[0] instanceof URL) {
-          url = args[0].toString();
+        const first = args[0];
+        if (typeof first === "string") {
+          url = first;
           if (args[1] && args[1].method) method = args[1].method;
+        } else if (first instanceof URL) {
+          url = first.href;
+          if (args[1] && args[1].method) method = args[1].method;
+        } else if (first instanceof Request) {
+          url = first.url;
+          method = first.method || "GET";
         }
-      } catch (e) {
-        // Fail-safe: if argument parsing fails, fallback to original fetch
-      }
+      } catch (_e) { }
+      return { url, method };
+    }
 
-      // Hot-path optimization: skip non-stream requests immediately
-      if (!isTargetUrl(url)) {
-        trackMetric("ignored");
-        return originalFetch.apply(this, args);
-      }
-
+    async function handleStreamFetch(ctx, args, url, method) {
       trackMetric("fetch");
       let isMaster = false;
 
       try {
-        const response = await originalFetch.apply(this, args);
+        const response = await originalFetch.apply(ctx, args);
         const finalUrl = response && response.url ? response.url : url;
 
         if (finalUrl !== url) trackMetric("redirect");
@@ -164,9 +164,27 @@
         notifyIsolatedWorld(finalUrl, method, "FETCH", { isMaster });
         return response;
       } catch (error) {
-        // Fail-safe: throw as normal so page error handling is undisturbed
         throw error;
       }
+    }
+
+    function hookedFetch(...args) {
+      if (window.__MSTREAM_DISABLED__) {
+        return originalFetch.apply(this, args);
+      }
+
+      const { url, method } = extractUrlAndMethod(args);
+
+      // Hot-path synchronous passthrough for non-stream requests:
+      // Executed synchronously on native fetch without wrapping in Promise/async,
+      // preventing stack-frame modification and CSP error attribution
+      if (!isTargetUrl(url)) {
+        trackMetric("ignored");
+        return originalFetch.apply(this, args);
+      }
+
+      // Only confirmed .m3u8 streams enter the async inspection pipeline
+      return handleStreamFetch(this, args, url, method);
     }
 
     window.fetch = hookedFetch;
@@ -187,6 +205,9 @@
     const attachedListeners = new WeakSet();
 
     function hookedXhrOpen(method, url, ...rest) {
+      if (window.__MSTREAM_DISABLED__) {
+        return originalXhrOpen.call(this, method, url, ...rest);
+      }
       try {
         const urlStr = typeof url === "string" ? url : String(url);
         if (isTargetUrl(urlStr)) {
@@ -264,5 +285,16 @@
   };
 
   window.addEventListener("popstate", notifyNavigation);
+
+  // ==========================================================================
+  // 7. Dynamic Interception Control Listener
+  // ==========================================================================
+
+  window.addEventListener("message", function (event) {
+    if (event.source !== window || !event.data || event.data.source !== "__MSTREAM_CTRL__") return;
+    if (event.data.type === "SET_ENABLED") {
+      window.__MSTREAM_DISABLED__ = !event.data.enabled;
+    }
+  });
 })();
 

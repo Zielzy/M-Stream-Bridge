@@ -1,6 +1,6 @@
 // ==M-Stream Bridge==
 // @name        M-Stream Bridge
-// @version     3.1.1
+// @version     3.2.0
 // @author      Zielzy
 // @description Local bridge for non-DRM browser streams and Migaku Player.
 // @homepage    https://github.com/Zielzy/M-Stream-Bridge
@@ -39,23 +39,31 @@
         } catch (err) {}
     }
     function isTargetUrl(url) {
-        if ("string" != typeof url) return !1;
+        if ("string" != typeof url || !url) return !1;
+        if (!url.startsWith("http://") && !url.startsWith("https://")) return !1;
         const u = url.toLowerCase();
         return !(u.includes(".js") || u.includes(".css") || u.includes(".png") || u.includes(".jpg") || u.includes(".woff") || u.includes(".json")) && (!(u.includes(".ts") || u.includes(".m4s") || u.match(/seg-\d/)) && u.includes(".m3u8"));
     }
     if (!0) {
         const originalFetch = window.fetch;
-        async function hookedFetch(...args) {
+        function extractUrlAndMethod(args) {
             let url = "", method = "GET";
             try {
-                args[0] instanceof Request ? (url = args[0].url, method = args[0].method || "GET") : ("string" == typeof args[0] || args[0] instanceof URL) && (url = args[0].toString(), 
-                args[1] && args[1].method && (method = args[1].method));
-            } catch (e) {}
-            if (!isTargetUrl(url)) return trackMetric("ignored"), originalFetch.apply(this, args);
+                const first = args[0];
+                "string" == typeof first ? (url = first, args[1] && args[1].method && (method = args[1].method)) : first instanceof URL ? (url = first.href, 
+                args[1] && args[1].method && (method = args[1].method)) : first instanceof Request && (url = first.url, 
+                method = first.method || "GET");
+            } catch (_e) {}
+            return {
+                url: url,
+                method: method
+            };
+        }
+        async function handleStreamFetch(ctx, args, url, method) {
             trackMetric("fetch");
             let isMaster = !1;
             try {
-                const response = await originalFetch.apply(this, args), finalUrl = response && response.url ? response.url : url;
+                const response = await originalFetch.apply(ctx, args), finalUrl = response && response.url ? response.url : url;
                 if (finalUrl !== url && trackMetric("redirect"), FEATURES_PARSE_MASTER && response && response.clone) try {
                     const clone = response.clone();
                     (await clone.text()).includes("#EXT-X-STREAM-INF") ? (isMaster = !0, trackMetric("master")) : trackMetric("variant");
@@ -67,11 +75,18 @@
                 throw error;
             }
         }
+        function hookedFetch(...args) {
+            if (window.__MSTREAM_DISABLED__) return originalFetch.apply(this, args);
+            const {url: url, method: method} = extractUrlAndMethod(args);
+            return isTargetUrl(url) ? handleStreamFetch(this, args, url, method) : (trackMetric("ignored"), 
+            originalFetch.apply(this, args));
+        }
         window.fetch = hookedFetch, FEATURES_STEALTH && (window.fetch.toString = () => "function fetch() { [native code] }");
     }
     if (FEATURES_XHR) {
         const originalXhrOpen = XMLHttpRequest.prototype.open, xhrState = new WeakMap, attachedListeners = new WeakSet;
         function hookedXhrOpen(method, url, ...rest) {
+            if (window.__MSTREAM_DISABLED__) return originalXhrOpen.call(this, method, url, ...rest);
             try {
                 const urlStr = "string" == typeof url ? url : String(url);
                 isTargetUrl(urlStr) ? (attachedListeners.has(this) || (attachedListeners.add(this), 
@@ -117,5 +132,7 @@
     history.replaceState = function(...args) {
         const res = originalReplaceState.apply(this, args);
         return notifyNavigation(), res;
-    }, window.addEventListener("popstate", notifyNavigation);
+    }, window.addEventListener("popstate", notifyNavigation), window.addEventListener("message", function(event) {
+        event.source === window && event.data && "__MSTREAM_CTRL__" === event.data.source && "SET_ENABLED" === event.data.type && (window.__MSTREAM_DISABLED__ = !event.data.enabled);
+    });
 }();

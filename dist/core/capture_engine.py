@@ -1,6 +1,6 @@
 # ==M-Stream Bridge==
 # @name        M-Stream Bridge
-# @version     3.1.1
+# @version     3.2.0
 # @author      Zielzy
 # @description Local bridge for non-DRM browser streams and Migaku Player.
 # @homepage    https://github.com/Zielzy/M-Stream-Bridge
@@ -416,20 +416,29 @@ class CaptureEngineMixin:
             incoming_prio = SOURCE_AUTHORITY.get(capture_source, 10)
             active_age = time.time() - float(capture_active_state.get('updated_at') or 0)
             has_active_stream = bool(current_stream.get('stream_url'))
+            active_stream_type = current_stream.get('stream_type', 'hls')
+            incoming_stream_type = stream_type
             if is_new_stream and has_active_stream and (not is_new_tab):
-                if active_prio > incoming_prio and active_age < 25.0:
+                if active_stream_type == 'hls' and incoming_stream_type == 'direct' and (active_age < 30.0) and (capture_source not in ('promote_candidate', 'user_override')):
+                    self._log('INFO', f"[{capture_source}] DROP reason=hls_priority_kept | active_url={current_stream.get('stream_url', '')[:60]} | incoming_direct={resolved_stream_url[:60]}")
+                    self._send_json(202, {'status': 'ignored', 'reason': 'hls_priority_kept'})
+                    return
+                is_hls_upgrade = active_stream_type == 'direct' and incoming_stream_type == 'hls'
+                if active_prio > incoming_prio and active_age < 25.0 and (not is_hls_upgrade):
                     self._log('INFO', f'[{capture_source}] DROP reason=subordinate_source | active={active_source} (prio={active_prio}) | incoming={capture_source} (prio={incoming_prio}) | active_age={active_age:.1f}s | incoming_url={resolved_stream_url[:60]}')
                     self._send_json(202, {'status': 'ignored', 'reason': 'subordinate_source'})
                     return
                 has_active_headers = bool(current_stream.get('url_header_map') or current_stream.get('request_headers') or current_stream.get('cookie'))
                 has_incoming_headers = bool(incoming_map or request_headers or cookie)
-                if has_active_headers and (not has_incoming_headers) and (active_age < 25.0) and (incoming_prio < 70):
+                if has_active_headers and (not has_incoming_headers) and (active_age < 25.0) and (incoming_prio < 70) and (not is_hls_upgrade):
                     self._log('INFO', f'[{capture_source}] DROP reason=headerless_downgrade | active_age={active_age:.1f}s | incoming_url={resolved_stream_url[:60]}')
                     self._send_json(202, {'status': 'ignored', 'reason': 'headerless_downgrade'})
                     return
+            else:
+                is_hls_upgrade = False
             old_title = current_stream.get('title') or ''
             if is_new_tab or is_new_stream:
-                reason = 'tab_changed' if is_new_tab else 'stream_changed'
+                reason = 'tab_changed' if is_new_tab else 'hls_upgrade' if is_hls_upgrade else 'stream_changed'
                 self._log('INFO', f'[STATE] stream context reset | reason={reason} | clearing transient state')
                 self._reset_stream_context(current_stream)
             self._resolve_and_update_stream_title(title, raw_title_candidates)

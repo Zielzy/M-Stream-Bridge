@@ -1,6 +1,6 @@
 // ==M-Stream Bridge==
 // @name        M-Stream Bridge
-// @version     3.1.1
+// @version     3.2.0
 // @author      Zielzy
 // @description Local bridge for non-DRM browser streams and Migaku Player.
 // @homepage    https://github.com/Zielzy/M-Stream-Bridge
@@ -15,7 +15,17 @@ import "./shared/utils.js";
 
 const {parseEpisodeFromText: parseEpisodeFromText, parseSeasonFromText: parseSeasonFromText, extractEpisodeFromUrl: extractEpisodeFromUrl} = globalThis.BridgeUtils, BRIDGE_ORIGIN = "http://127.0.0.1:7000", CAPTURE_ENDPOINT = `${BRIDGE_ORIGIN}/capture-request`, CAPTURE_EVENT_ENDPOINT = `${BRIDGE_ORIGIN}/capture-event`, SET_STREAM_ENDPOINT = `${BRIDGE_ORIGIN}/set-stream`, LOG_PREFIX = "[BRIDGE-EXT]", LOG_LEVEL = "info", DEFAULT_MIGAKU_EXTENSION_ID = "dmeppfcidcpcocleneopiblmpnbokhep", MIGAKU_PLAYER_PATH = "/pages/player/index.html", MAX_HEADER_VALUE_LEN = 4096, MAX_CACHE_SIZE = 2e3, MAX_COOLDOWN_KEYS = 1e3, STREAM_SET_COOLDOWN_HLS_MS = 3e4, STREAM_SET_COOLDOWN_DIRECT_MS = 15e3, STREAM_SET_COOLDOWN_TAB_MS = 3e3, AUTO_STREAM_TYPES = new Set([ "hls", "direct" ]), ALLOWED_REQUEST_TYPES = new Set([ "media", "xmlhttprequest", "fetch", "sub_frame", "object" ]), TAB_RECENT_TTL_MS = 3e5, TAB_SWITCH_SET_COOLDOWN_MS = 3e3, TAB_META_TTL_MS = 6e5, MAX_CANDIDATES_PER_TAB = 8, MAX_TAB_STATE_ENTRIES = 200, RESPONSE_STREAM_CONTENT_TYPES = new Set([ "application/vnd.apple.mpegurl", "application/x-mpegurl", "application/octet-stream", "video/mp4", "video/webm", "video/MP2T", "video/iso.segment", "video/x-m4v" ]), requestCache = new Map, lastSetByKey = new Map, tabRecentPrimary = new Map, tabPageMeta = new Map;
 
-let activeTabId = -1;
+let activeTabId = -1, isBridgeEnabled = !0;
+
+async function syncBridgeEnabledBadge() {
+    isBridgeEnabled ? (chrome.action?.setBadgeText && chrome.action.setBadgeText({
+        text: ""
+    }), checkUpstreamUpdate()) : chrome.action?.setBadgeText && (chrome.action.setBadgeText({
+        text: "OFF"
+    }), chrome.action.setBadgeBackgroundColor({
+        color: "#6b7280"
+    }));
+}
 
 function shouldLog(level) {
     return "debug" !== level;
@@ -283,6 +293,8 @@ function shouldSetStream(url, streamType, tabId = -1) {
     if (isBridgeLocalUrl(url)) return !1;
     if (isSubtitleLikeUrl(url)) return !1;
     if ("direct" === streamType && isLikelyAudioDirectUrl(url)) return !1;
+    if ("direct" === streamType && hasRecentHlsCandidateForTab(tabId)) return logDebug(`cooldown reject | layer=HLS_PRIORITY | tab=${tabId} | direct stream dropped due to active HLS candidate`), 
+    !1;
     if ("hls" === streamType && !isPrimaryHlsUrl(url)) return !1;
     const now = Date.now(), key = normalizeUrlKey(url) || url, prev = lastSetByKey.get(key) || 0, cooldownMs = "hls" === streamType ? 3e4 : 15e3;
     if (now - prev < cooldownMs) {
@@ -323,6 +335,14 @@ function findRecentHlsMasterForTab(tabId, url) {
 
 function shouldDeferHlsVariantToMaster(tabId, url) {
     return isLikelyHlsVariantUrl(url) && Boolean(findRecentHlsMasterForTab(tabId, url));
+}
+
+function hasRecentHlsCandidateForTab(tabId) {
+    if ("number" != typeof tabId || tabId < 0) return !1;
+    const entry = tabRecentPrimary.get(tabId);
+    if (!entry || !Array.isArray(entry.candidates)) return !1;
+    const now = Date.now();
+    return entry.candidates.some(c => c && "hls" === c.streamType && now - Number(c.lastSeenAt || 0) < 3e4);
 }
 
 function buildPayload(details) {
@@ -452,6 +472,7 @@ function rememberTabPrimaryCandidate(details, payload, streamType) {
 }
 
 async function maybeSetStreamForActiveTab(tabId) {
+    if (!isBridgeEnabled) return;
     if ("number" != typeof tabId || tabId < 0) return;
     const entry = tabRecentPrimary.get(tabId);
     if (!entry || !entry.candidates || 0 === entry.candidates.length) return;
@@ -477,10 +498,13 @@ function normalizeMigakuExtensionId(value) {
 }
 
 async function loadBridgeSettings() {
+    const stored = await chrome.storage.local.get({
+        migakuExtensionId: DEFAULT_MIGAKU_EXTENSION_ID,
+        bridgeEnabled: !0
+    });
     return {
-        migakuExtensionId: normalizeMigakuExtensionId((await chrome.storage.local.get({
-            migakuExtensionId: DEFAULT_MIGAKU_EXTENSION_ID
-        })).migakuExtensionId) || DEFAULT_MIGAKU_EXTENSION_ID
+        migakuExtensionId: normalizeMigakuExtensionId(stored.migakuExtensionId) || DEFAULT_MIGAKU_EXTENSION_ID,
+        bridgeEnabled: !1 !== stored.bridgeEnabled
     };
 }
 
@@ -601,6 +625,10 @@ async function handleRuntimeMessage(message, sender) {
         }
         if ("bridge_open_migaku_player" === message.type || "open_migaku_player" === message.type) return await openMigakuPlayer();
         if ("bridge_ext_page_hook" === message.type) {
+            if (!isBridgeEnabled) return {
+                ok: !1,
+                reason: "bridge_disabled"
+            };
             const tabId = Number(sender?.tab?.id ?? -1), streamType = inferStreamType(message.url);
             if ("other" === streamType) return logInfo("DOM HOOK rejected (not a stream)", message.url), 
             {
@@ -658,7 +686,7 @@ function isNewerVersion(candidate, current) {
 
 async function checkUpstreamUpdate() {
     try {
-        const currentVersion = chrome.runtime.getManifest()?.version || "3.1.1", cached = await chrome.storage.local.get([ "upstreamVersion", "downloadUrl", "lastUpdateCheck" ]), now = Date.now();
+        const currentVersion = chrome.runtime.getManifest()?.version || "3.2.0", cached = await chrome.storage.local.get([ "upstreamVersion", "downloadUrl", "lastUpdateCheck" ]), now = Date.now();
         let version = cached?.upstreamVersion;
         if (!version || now - (cached?.lastUpdateCheck || 0) > 432e5) {
             const resp = await fetch("https://raw.githubusercontent.com/Zielzy/M-Stream-Bridge/main/index.min.json", {
@@ -683,7 +711,15 @@ async function checkUpstreamUpdate() {
     } catch (_e) {}
 }
 
-chrome.webRequest.onBeforeSendHeaders.addListener(async details => {
+chrome.storage.local.get({
+    bridgeEnabled: !0
+}, res => {
+    isBridgeEnabled = !1 !== res?.bridgeEnabled, syncBridgeEnabledBadge();
+}), chrome.storage.onChanged.addListener((changes, area) => {
+    "local" === area && changes.bridgeEnabled && (isBridgeEnabled = !1 !== changes.bridgeEnabled.newValue, 
+    syncBridgeEnabledBadge());
+}), chrome.webRequest.onBeforeSendHeaders.addListener(async details => {
+    if (!isBridgeEnabled) return;
     if (!isAllowedRequestType(details?.type)) return;
     if (!isInterestingUrl(details?.url)) return;
     if (isSegmentLikeUrl(details?.url)) return;
@@ -704,6 +740,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(async details => {
 }, {
     urls: [ "<all_urls>" ]
 }, [ "requestHeaders", "extraHeaders" ]), chrome.webRequest.onCompleted.addListener(async details => {
+    if (!isBridgeEnabled) return;
     const url = details?.url || "";
     if (!url) return;
     if (isBridgeLocalUrl(url)) return;
@@ -763,7 +800,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(async details => {
 }, {
     urls: [ "<all_urls>" ]
 }, [ "responseHeaders", "extraHeaders" ]), chrome.runtime.onInstalled.addListener(() => {
-    logInfo("installed", "v3.1.1"), checkUpstreamUpdate();
+    logInfo("installed", "v3.2.0"), checkUpstreamUpdate();
 }), chrome.runtime.onStartup.addListener(() => {
     checkUpstreamUpdate();
 }), chrome.tabs.onActivated.addListener(async activeInfo => {

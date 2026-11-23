@@ -73,6 +73,33 @@ const lastSetByKey = new Map();
 const tabRecentPrimary = new Map();
 const tabPageMeta = new Map();
 let activeTabId = -1;
+let isBridgeEnabled = true;
+
+async function syncBridgeEnabledBadge() {
+  if (!isBridgeEnabled) {
+    if (chrome.action?.setBadgeText) {
+      chrome.action.setBadgeText({ text: "OFF" });
+      chrome.action.setBadgeBackgroundColor({ color: "#6b7280" });
+    }
+  } else {
+    if (chrome.action?.setBadgeText) {
+      chrome.action.setBadgeText({ text: "" });
+    }
+    void checkUpstreamUpdate();
+  }
+}
+
+chrome.storage.local.get({ bridgeEnabled: true }, (res) => {
+  isBridgeEnabled = res?.bridgeEnabled !== false;
+  void syncBridgeEnabledBadge();
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.bridgeEnabled) {
+    isBridgeEnabled = changes.bridgeEnabled.newValue !== false;
+    void syncBridgeEnabledBadge();
+  }
+});
 
 /**
  * Evaluates whether logging is enabled for the specified level.
@@ -543,6 +570,10 @@ function shouldSetStream(url, streamType, tabId = -1) {
   if (isBridgeLocalUrl(url)) return false;
   if (isSubtitleLikeUrl(url)) return false;
   if (streamType === "direct" && isLikelyAudioDirectUrl(url)) return false;
+  if (streamType === "direct" && hasRecentHlsCandidateForTab(tabId)) {
+    logDebug(`cooldown reject | layer=HLS_PRIORITY | tab=${tabId} | direct stream dropped due to active HLS candidate`);
+    return false;
+  }
   if (streamType === "hls" && !isPrimaryHlsUrl(url)) return false;
 
   const now = Date.now();
@@ -609,6 +640,16 @@ function findRecentHlsMasterForTab(tabId, url) {
 
 function shouldDeferHlsVariantToMaster(tabId, url) {
   return isLikelyHlsVariantUrl(url) && Boolean(findRecentHlsMasterForTab(tabId, url));
+}
+
+function hasRecentHlsCandidateForTab(tabId) {
+  if (typeof tabId !== "number" || tabId < 0) return false;
+  const entry = tabRecentPrimary.get(tabId);
+  if (!entry || !Array.isArray(entry.candidates)) return false;
+  const now = Date.now();
+  return entry.candidates.some(
+    (c) => c && c.streamType === "hls" && (now - Number(c.lastSeenAt || 0) < 30000)
+  );
 }
 
 // ==========================================================================
@@ -828,6 +869,7 @@ function rememberTabPrimaryCandidate(details, payload, streamType) {
 }
 
 async function maybeSetStreamForActiveTab(tabId) {
+  if (!isBridgeEnabled) return;
   if (typeof tabId !== "number" || tabId < 0) return;
   const entry = tabRecentPrimary.get(tabId);
   if (!entry || !entry.candidates || entry.candidates.length === 0) return;
@@ -865,10 +907,13 @@ function normalizeMigakuExtensionId(value) {
 async function loadBridgeSettings() {
   const stored = await chrome.storage.local.get({
     migakuExtensionId: DEFAULT_MIGAKU_EXTENSION_ID,
+    bridgeEnabled: true,
   });
   const migakuExtensionId = normalizeMigakuExtensionId(stored.migakuExtensionId) || DEFAULT_MIGAKU_EXTENSION_ID;
+  const bridgeEnabled = stored.bridgeEnabled !== false;
   return {
     migakuExtensionId,
+    bridgeEnabled,
   };
 }
 
@@ -1015,6 +1060,7 @@ async function handleRuntimeMessage(message, sender) {
   }
 
   if (message.type === "bridge_ext_page_hook") {
+    if (!isBridgeEnabled) return { ok: false, reason: "bridge_disabled" };
     const tabId = Number(sender?.tab?.id ?? -1);
     const streamType = inferStreamType(message.url);
 
@@ -1072,6 +1118,7 @@ async function handleRuntimeMessage(message, sender) {
 // WebRequest: Intercept before request headers are sent
 chrome.webRequest.onBeforeSendHeaders.addListener(
   async (details) => {
+    if (!isBridgeEnabled) return;
     if (!isAllowedRequestType(details?.type)) return;
     if (!isInterestingUrl(details?.url)) return;
     if (isSegmentLikeUrl(details?.url)) return;
@@ -1111,6 +1158,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 // WebRequest: Inspect response headers upon completion
 chrome.webRequest.onCompleted.addListener(
   async (details) => {
+    if (!isBridgeEnabled) return;
     const url = details?.url || "";
     if (!url) return;
     if (isBridgeLocalUrl(url)) return;
